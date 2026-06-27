@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+backend/uploads/*
+!backend/uploads/.gitkeep
+portal/.next/
+portal/node_modules/
+.vercel
+backups/

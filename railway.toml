@@ -1,0 +1,6 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "sh -c 'npx prisma migrate deploy && node src/index.js'"

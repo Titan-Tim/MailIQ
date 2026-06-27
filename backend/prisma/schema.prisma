@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantPlan {
+  BASIC
+  BRANDED
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Tenant {
+  id            String       @id @default(cuid())
+  name          String
+  slug          String       @unique
+  logoUrl       String?
+  brandColor    String?      @default("#7c3aed")
+  plan          TenantPlan   @default(BASIC)
+  status        TenantStatus @default(ACTIVE)
+  suspendedAt   DateTime?
+  suspendReason String?
+
+  addressZoneX      Float @default(20)
+  addressZoneY      Float @default(49)
+  addressZoneWidth  Float @default(85)
+  addressZoneHeight Float @default(35)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  recipients Recipient[]
+  inserts    Insert[]
+  rules      DispatchRule[]
+  dispatches Dispatch[]
+  batches    PrintBatch[]
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  OPERATOR
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         UserRole @default(OPERATOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum DeliveryMethod {
+  DIGITAL
+  POST
+  AUTO
+}
+
+model Recipient {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  accountNumber String?
+  reference     String?
+  externalId    String?
+  title         String?
+  firstName     String?
+  lastName      String
+  companyName   String?
+  addressLine1  String?
+  addressLine2  String?
+  city          String?
+  county        String?
+  postcode      String?
+  country       String         @default("GB")
+  email         String?
+  deliveryMethod DeliveryMethod @default(AUTO)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  dispatches Dispatch[]
+
+  @@index([tenantId])
+  @@index([tenantId, accountNumber])
+  @@index([tenantId, externalId])
+}
+
+model Insert {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  name          String
+  description   String?
+  category      String?
+  fileKey       String
+  fileName      String
+  fileSizeBytes Int
+  pageCount     Int      @default(1)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ruleInserts     DispatchRuleInsert[]
+  dispatchInserts DispatchInsert[]
+}
+
+model DispatchRule {
+  id               String          @id @default(cuid())
+  tenantId         String
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  name             String
+  documentType     String?
+  priority         Int             @default(0)
+  deliveryOverride DeliveryMethod?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  inserts DispatchRuleInsert[]
+}
+
+model DispatchRuleInsert {
+  id       String       @id @default(cuid())
+  ruleId   String
+  rule     DispatchRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  insertId String
+  insert   Insert       @relation(fields: [insertId], references: [id])
+  order    Int          @default(0)
+}
+
+enum DispatchStatus {
+  PENDING
+  COMPOSING
+  READY
+  QUEUED
+  SENT
+  RETURNED
+  FAILED
+}
+
+model Dispatch {
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  recipientId      String?
+  recipient        Recipient?     @relation(fields: [recipientId], references: [id])
+  originalFileKey  String
+  originalFileName String
+  fileSizeBytes    Int
+  pageCount        Int            @default(1)
+  composedFileKey  String?
+  documentType     String?
+  reference        String?
+  notes            String?
+  barcodeCode      String         @unique
+  addressOverride  Json?
+  status           DispatchStatus @default(PENDING)
+  deliveryMethod   DeliveryMethod?
+  errorMessage     String?
+  uploadedAt       DateTime       @default(now())
+  composedAt       DateTime?
+  sentAt           DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  inserts        DispatchInsert[]
+  digitalSend    DigitalSend?
+  printBatchItem PrintBatchItem?
+  returnMail     ReturnMail?
+
+  @@index([tenantId, status])
+  @@index([barcodeCode])
+}
+
+model DispatchInsert {
+  id         String   @id @default(cuid())
+  dispatchId String
+  dispatch   Dispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  insertId   String
+  insert     Insert   @relation(fields: [insertId], references: [id])
+  order      Int      @default(0)
+  source     String   @default("manual")
+}
+
+model DigitalSend {
+  id              String    @id @default(cuid())
+  dispatchId      String    @unique
+  dispatch        Dispatch  @relation(fields: [dispatchId], references: [id])
+  toEmail         String
+  subject         String
+  trackingToken   String    @unique @default(cuid())
+  emailSent       Boolean   @default(false)
+  emailSentAt     DateTime?
+  firstOpenedAt   DateTime?
+  lastOpenedAt    DateTime?
+  openCount       Int       @default(0)
+  firstDownloadAt DateTime?
+  downloadCount   Int       @default(0)
+  createdAt       DateTime  @default(now())
+}
+
+enum BatchStatus {
+  OPEN
+  READY
+  PRINTED
+  POSTED
+}
+
+model PrintBatch {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  name          String
+  mergedFileKey String?
+  status        BatchStatus @default(OPEN)
+  itemCount     Int         @default(0)
+  totalPages    Int         @default(0)
+  createdAt     DateTime    @default(now())
+  printedAt     DateTime?
+  postedAt      DateTime?
+
+  items PrintBatchItem[]
+}
+
+model PrintBatchItem {
+  id         String     @id @default(cuid())
+  batchId    String
+  batch      PrintBatch @relation(fields: [batchId], references: [id])
+  dispatchId String     @unique
+  dispatch   Dispatch   @relation(fields: [dispatchId], references: [id])
+  pageCount  Int        @default(1)
+  order      Int        @default(0)
+  addedAt    DateTime   @default(now())
+}
+
+model ReturnMail {
+  id           String    @id @default(cuid())
+  dispatchId   String    @unique
+  dispatch     Dispatch  @relation(fields: [dispatchId], references: [id])
+  scannedCode  String
+  returnReason String?
+  notes        String?
+  scannedAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedBy   String?
+}
