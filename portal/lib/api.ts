@@ -64,3 +64,16 @@ export function insertFileUrl(insertId: string) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : ''
   return `${API}/api/inserts/${insertId}/file${token ? `?auth=${token}` : ''}`
 }
+
+export async function forgotPassword(email: string) {
+  const res = await fetch(`${API}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Request failed')
+  }
+  return res.json()
+}

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
-  Settings, Printer, Send, RotateCcw, LogOut
+  Settings, Printer, Send, RotateCcw, LogOut, KeyRound
 } from 'lucide-react'
 
 const NAV = [
@@ -17,6 +17,7 @@ const NAV = [
   { href: '/dashboard/library',   label: 'Insert Library',icon: BookOpen },
   { href: '/dashboard/rules',     label: 'Dispatch Rules',icon: Settings },
   { href: '/dashboard/returns',   label: 'Returns',       icon: RotateCcw },
+  { href: '/dashboard/settings',  label: 'Change Password',icon: KeyRound },
 ]
 
 function Sidebar() {
@@ -76,10 +77,15 @@ function Sidebar() {
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login')
-  }, [user, loading, router])
+    if (!loading && !user) {
+      router.push('/login')
+    } else if (!loading && user?.mustChangePassword && pathname !== '/dashboard/settings') {
+      router.push('/dashboard/settings')
+    }
+  }, [user, loading, pathname, router])
 
   if (loading || !user) return (
     <div className="min-h-screen flex items-center justify-center">

@@ -2,16 +2,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface Tenant { id: string; name: string; slug: string; brandColor: string; plan: string }
-interface User   { id: string; email: string; name: string; role: string; tenant: Tenant }
+interface User   { id: string; email: string; name: string; role: string; mustChangePassword?: boolean; tenant: Tenant }
 
 interface AuthCtx {
   user: User | null
+  setUser: (u: User | null) => void
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   loading: boolean
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, login: async () => {}, logout: () => {}, loading: true })
+const Ctx = createContext<AuthCtx>({ user: null, setUser: () => {}, login: async () => {}, logout: () => {}, loading: true })
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'
 
@@ -41,13 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }
 
+  function updateUser(u: User | null) {
+    setUser(u)
+    if (u) localStorage.setItem('mailiq_user', JSON.stringify(u))
+  }
+
   function logout() {
     localStorage.clear()
     setUser(null)
     window.location.href = '/mail/login'
   }
 
-  return <Ctx.Provider value={{ user, login, logout, loading }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ user, setUser: updateUser, login, logout, loading }}>{children}</Ctx.Provider>
 }
 
 export const useAuth = () => useContext(Ctx)

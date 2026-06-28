@@ -1,6 +1,7 @@
 'use client'
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { AuthProvider } from '@/lib/auth-context'
 import { Mail } from 'lucide-react'
@@ -52,6 +53,7 @@ function LoginForm() {
               <input
                 type="email" required value={email}
                 onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                 placeholder="you@example.com"
               />
@@ -61,9 +63,15 @@ function LoginForm() {
               <input
                 type="password" required value={password}
                 onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                 placeholder="••••••••"
               />
+            </div>
+            <div className="text-right">
+              <Link href="/forgot-password" className="text-sm text-violet-700 hover:underline">
+                Forgot password?
+              </Link>
             </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
