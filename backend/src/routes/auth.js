@@ -24,8 +24,12 @@ function generateTempPassword() {
 }
 
 function signTokens(userId) {
+  // 30-minute rolling inactivity window for portal logins. The portal only
+  // refreshes on genuine user activity (apiFetch retries a 401 — no background
+  // polling), and /refresh mints a fresh refresh token each time, so an active
+  // user stays signed in while ~30 min of inactivity forces re-login.
   const access  = jwt.sign({ userId }, process.env.JWT_SECRET,         { expiresIn: '15m' })
-  const refresh = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' })
+  const refresh = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30m' })
   return { access, refresh }
 }
 
