@@ -13,6 +13,7 @@ async function requireAuth(req, res, next) {
       include: { tenant: true }
     })
     if (!user) return res.status(401).json({ error: 'Unauthorised' })
+    if (!user.isActive) return res.status(403).json({ error: 'Account deactivated' })
     if (user.tenant.status === 'SUSPENDED') {
       return res.status(403).json({ error: 'Account suspended' })
     }

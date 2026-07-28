@@ -12,6 +12,7 @@ const batchRouter     = require('./routes/batches')
 const trackRouter     = require('./routes/track')
 const returnRouter    = require('./routes/returns')
 const inboundRouter   = require('./routes/inbound')
+const usersRouter     = require('./routes/users')
 
 const app = express()
 
@@ -34,6 +35,7 @@ app.use('/api/rules',      rulesRouter)
 app.use('/api/batches',    batchRouter)
 app.use('/api/returns',    returnRouter)
 app.use('/api/inbound',    inboundRouter)
+app.use('/api/users',      usersRouter)
 
 // Public tracking route (no auth — recipient-facing)
 app.use('/api/track', trackRouter)

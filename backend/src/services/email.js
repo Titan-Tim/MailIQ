@@ -119,4 +119,62 @@ async function sendPasswordResetEmail(user, tenant, tempPassword) {
   return !result.error
 }
 
-module.exports = { sendDispatchEmail, sendPasswordResetEmail }
+/**
+ * Send a new-user invite with a temporary password.
+ * They're forced to set their own password on first login.
+ */
+async function sendInviteEmail(user, tenant, tempPassword, invitedByName) {
+  if (!resend) {
+    console.warn('[email] RESEND_API_KEY not configured — skipping invite email')
+    return false
+  }
+
+  const portalUrl = process.env.PORTAL_URL || 'http://localhost:3000'
+  const loginUrl = `${portalUrl}/login`
+  const brandColor = tenant?.brandColor || '#7c3aed'
+  const orgName = tenant?.name || 'Mail-IQ'
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;color:#1e293b;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:${brandColor};padding:20px 24px;border-radius:8px 8px 0 0;">
+    <h1 style="color:white;margin:0;font-size:18px;">Mail-IQ</h1>
+  </div>
+  <div style="background:#f8fafc;padding:24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;">
+    <p style="margin:0 0 16px 0;">${user.name ? `Hi ${user.name},` : 'Hi,'}</p>
+    <p style="margin:0 0 16px 0;">
+      ${invitedByName ? `${invitedByName} has` : 'You have been'} invited you to <strong>${orgName}</strong> on Mail-IQ.
+      Use the temporary password below to sign in — you'll set your own password right away.
+    </p>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:6px;padding:16px 20px;margin:0 0 20px 0;">
+      <p style="margin:2px 0;font-size:14px;">Email: <strong>${user.email}</strong></p>
+      <p style="margin:2px 0;font-size:14px;">Temporary password: <strong style="font-family:monospace;">${tempPassword}</strong></p>
+    </div>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${loginUrl}"
+         style="background:${brandColor};color:white;padding:12px 28px;
+                border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;
+                display:inline-block;">
+        Sign in to Mail-IQ
+      </a>
+    </div>
+    <p style="margin:16px 0 0 0;color:#94a3b8;font-size:12px;">
+      If you weren't expecting this invitation, you can ignore this email.
+    </p>
+  </div>
+</body>
+</html>`
+
+  const result = await resend.emails.send({
+    from:    FROM,
+    to:      [user.email],
+    subject: `You've been invited to ${orgName} on Mail-IQ`,
+    html,
+  })
+
+  return !result.error
+}
+
+module.exports = { sendDispatchEmail, sendPasswordResetEmail, sendInviteEmail }

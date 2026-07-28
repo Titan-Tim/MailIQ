@@ -1,3 +1,3 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = { basePath: '/mail' }
+const nextConfig = {}
 module.exports = nextConfig

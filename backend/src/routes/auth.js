@@ -47,6 +47,10 @@ router.post('/login', async (req, res) => {
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' })
 
+  if (!user.isActive) {
+    return res.status(403).json({ error: 'This account has been deactivated. Contact your administrator.' })
+  }
+
   if (user.tenant.status === 'SUSPENDED') {
     return res.status(403).json({
       error: 'Account suspended',

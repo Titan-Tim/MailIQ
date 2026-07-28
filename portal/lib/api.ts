@@ -27,7 +27,7 @@ export async function apiFetch(path: string, opts: RequestInit = {}) {
       }
     }
     localStorage.clear()
-    window.location.href = '/mail/login'
+    window.location.href = '/login'
     throw new Error('Session expired')
   }
   if (!res.ok) {

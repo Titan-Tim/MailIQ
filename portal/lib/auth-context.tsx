@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     localStorage.clear()
     setUser(null)
-    window.location.href = '/mail/login'
+    window.location.href = '/login'
   }
 
   return <Ctx.Provider value={{ user, setUser: updateUser, login, logout, loading }}>{children}</Ctx.Provider>

@@ -40,6 +40,7 @@ const NAV_GROUPS = [
     label: 'Account',
     icon: KeyRound,
     items: [
+      { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
       { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
     ],
   },
@@ -61,7 +62,13 @@ function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-3 space-y-4 overflow-y-auto">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group) => {
+          // Hide SUPER_ADMIN-only items from other roles; drop empty groups.
+          const items = group.items.filter(
+            (it: any) => !it.superAdminOnly || user?.role === 'SUPER_ADMIN'
+          )
+          if (items.length === 0) return null
+          return (
           <div key={group.label}>
             <div className="flex items-center gap-2 px-3 mb-1.5">
               <group.icon size={12} className="text-violet-400" />
@@ -70,7 +77,7 @@ function Sidebar() {
               </span>
             </div>
             <div className="space-y-0.5">
-              {group.items.map(({ href, label, icon: Icon }) => {
+              {items.map(({ href, label, icon: Icon }) => {
                 // Exact match for section roots, prefix match for sub-pages —
                 // but keep '/dashboard' (Overview) and '/dashboard/inbound'
                 // from swallowing each other's sub-routes.
@@ -98,7 +105,8 @@ function Sidebar() {
               })}
             </div>
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* User */}
