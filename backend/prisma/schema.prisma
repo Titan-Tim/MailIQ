@@ -42,6 +42,11 @@ model Tenant {
   rules      DispatchRule[]
   dispatches Dispatch[]
   batches    PrintBatch[]
+
+  // Inbound module (Digital Mailroom) — additive, does not affect outbound
+  mailboxes    Mailbox[]
+  inboundRules InboundRoutingRule[]
+  inboundItems InboundItem[]
 }
 
 enum UserRole {
@@ -257,4 +262,107 @@ model ReturnMail {
   scannedAt    DateTime  @default(now())
   resolvedAt   DateTime?
   resolvedBy   String?
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  INBOUND MODULE — Digital Mailroom
+//  Scanned physical post → OCR → classify → route to an internal Mailbox.
+//  Entirely additive: shares Tenant/User but never touches the outbound models.
+// ════════════════════════════════════════════════════════════════════════════
+
+enum InboundStatus {
+  RECEIVED    // uploaded/scanned, awaiting processing
+  PROCESSING  // OCR + classification running
+  CLASSIFIED  // text extracted, type + addressee known, not yet delivered
+  TRIAGE      // low confidence or no match — needs a human decision
+  DELIVERED   // routed and emailed to a Mailbox
+  REJECTED    // junk / discarded
+}
+
+/// An internal routing destination for inbound post (a person, department, or
+/// shared inbox). Separate from the outbound Recipient (external customers).
+model Mailbox {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String                 // e.g. "Accounts", "Jane Smith", "HR"
+  department String?
+  email      String                 // destination inbox address
+  keywords   String?                // comma-separated aliases used for matching
+  isDefault  Boolean  @default(false) // catch-all fallback mailbox
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items InboundItem[]
+  rules InboundRoutingRule[]
+
+  @@index([tenantId])
+}
+
+/// A rule that routes inbound post to a Mailbox based on document type and/or
+/// keyword match. Higher priority wins.
+model InboundRoutingRule {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  name            String
+  priority        Int      @default(0)      // higher wins
+  matchType       String   @default("ANY")  // ANY | ALL of the conditions below
+  documentType    String?                   // match classified doc type
+  keyword         String?                   // match addressee/text contains keyword
+  targetMailboxId String?
+  targetMailbox   Mailbox? @relation(fields: [targetMailboxId], references: [id])
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+/// A single piece of inbound post moving through the pipeline.
+model InboundItem {
+  id            String  @id @default(cuid())
+  tenantId      String
+  tenant        Tenant  @relation(fields: [tenantId], references: [id])
+  fileKey       String?              // stored scan (PDF/image)
+  fileName      String
+  fileSizeBytes Int     @default(0)
+  pageCount     Int     @default(1)
+  source        String  @default("upload") // upload | scan-email | agent
+
+  ocrText       String?              // extracted text
+  extractedName String?              // addressee/recipient extracted
+  documentType  String?              // classified type (invoice, legal, hr…)
+  confidence    Float   @default(0)  // 0..1 routing confidence
+
+  status           InboundStatus @default(RECEIVED)
+  matchedMailboxId String?
+  matchedMailbox   Mailbox?      @relation(fields: [matchedMailboxId], references: [id])
+  matchedRuleId    String?
+  routingReason    String?            // audit: why it routed where it did
+  deliveredEmail   String?
+  deliveredAt      DateTime?
+
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  events InboundEvent[]
+
+  @@index([tenantId, status])
+}
+
+/// Immutable audit trail for an inbound item (every decision is logged).
+model InboundEvent {
+  id        String      @id @default(cuid())
+  itemId    String
+  item      InboundItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      String      // RECEIVED | OCR | CLASSIFIED | ROUTED | REROUTED | DELIVERED | REJECTED
+  detail    String?
+  actor     String?     // "system" or a user's email
+  createdAt DateTime    @default(now())
+
+  @@index([itemId])
 }

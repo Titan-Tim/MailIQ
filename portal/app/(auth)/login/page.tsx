@@ -37,7 +37,7 @@ function LoginForm() {
             <Mail size={24} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Jasmitan Mail</h1>
+            <h1 className="text-2xl font-bold text-white">Mail-IQ</h1>
             <p className="text-violet-300 text-sm">Document Dispatch Management</p>
           </div>
         </div>

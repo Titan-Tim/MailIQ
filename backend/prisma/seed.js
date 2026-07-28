@@ -100,6 +100,74 @@ async function main() {
   }
   console.log('Sample rule created')
 
+  // ══════════════════════ INBOUND MODULE — demo data ════════════════════════
+  // Mailboxes (internal routing destinations)
+  const mailboxSeeds = [
+    { name: 'Accounts',   department: 'Finance', email: 'accounts@titanbm.co.uk', keywords: 'invoice,remittance,accounts,payable,statement', isDefault: false },
+    { name: 'HR',         department: 'People',  email: 'hr@titanbm.co.uk',       keywords: 'hr,payslip,p45,p60,employment,grievance',       isDefault: false },
+    { name: 'Legal',      department: 'Legal',   email: 'legal@titanbm.co.uk',    keywords: 'solicitor,court,claim,notice,tribunal',         isDefault: false },
+    { name: 'Reception',  department: 'Admin',   email: 'reception@titanbm.co.uk',keywords: '',                                              isDefault: true  },
+  ]
+  const mailboxes = {}
+  for (const m of mailboxSeeds) {
+    let mb = await prisma.mailbox.findFirst({ where: { tenantId: tenant.id, name: m.name } })
+    if (!mb) mb = await prisma.mailbox.create({ data: { tenantId: tenant.id, ...m } })
+    mailboxes[m.name] = mb
+  }
+  console.log('Sample mailboxes created')
+
+  // Routing rules
+  const ruleSeeds = [
+    { name: 'Invoices → Accounts', documentType: 'invoice',   keyword: null,        priority: 100, target: 'Accounts' },
+    { name: 'Statements → Accounts', documentType: 'statement', keyword: null,      priority: 90,  target: 'Accounts' },
+    { name: 'Legal correspondence', documentType: 'legal',    keyword: null,        priority: 80,  target: 'Legal' },
+    { name: 'HR / payroll',         documentType: 'hr',       keyword: null,        priority: 70,  target: 'HR' },
+  ]
+  for (const r of ruleSeeds) {
+    const exists = await prisma.inboundRoutingRule.findFirst({ where: { tenantId: tenant.id, name: r.name } })
+    if (!exists) {
+      await prisma.inboundRoutingRule.create({
+        data: {
+          tenantId: tenant.id, name: r.name, documentType: r.documentType,
+          keyword: r.keyword, priority: r.priority, matchType: 'ANY',
+          targetMailboxId: mailboxes[r.target].id,
+        },
+      })
+    }
+  }
+  console.log('Sample inbound rules created')
+
+  // A couple of sample inbound items (skip if any already exist)
+  const itemCount = await prisma.inboundItem.count({ where: { tenantId: tenant.id } })
+  if (itemCount === 0) {
+    const acc = mailboxes['Accounts']
+    const i1 = await prisma.inboundItem.create({
+      data: {
+        tenantId: tenant.id, fileName: 'acme-invoice-4471.pdf', source: 'scan-email',
+        ocrText: 'INVOICE  Acme Supplies Ltd  Amount due £1,240.00  VAT included',
+        extractedName: 'Accounts Department', documentType: 'invoice', confidence: 0.9,
+        status: 'DELIVERED', matchedMailboxId: acc.id, deliveredEmail: acc.email,
+        deliveredAt: new Date(), routingReason: 'Matched rule "Invoices → Accounts" (type=invoice)',
+      },
+    })
+    await prisma.inboundEvent.createMany({ data: [
+      { itemId: i1.id, type: 'RECEIVED',  detail: 'source=scan-email', actor: 'system' },
+      { itemId: i1.id, type: 'CLASSIFIED', detail: 'type=invoice', actor: 'system' },
+      { itemId: i1.id, type: 'DELIVERED', detail: `Emailed ${acc.email}`, actor: 'system' },
+    ]})
+
+    // One low-confidence item to populate the triage queue
+    await prisma.inboundItem.create({
+      data: {
+        tenantId: tenant.id, fileName: 'handwritten-letter.pdf', source: 'upload',
+        ocrText: 'Dear Sir or Madam,  I am writing regarding...', extractedName: '',
+        documentType: 'general', confidence: 0.3, status: 'TRIAGE',
+        routingReason: 'No rule or keyword matched — sent to default mailbox "Reception"',
+      },
+    })
+    console.log('Sample inbound items created (1 delivered, 1 in triage)')
+  }
+
   console.log('\n✓ Seed complete')
   console.log('  Login: admin@titanbm.co.uk / changeme123')
   console.log('  Login: operator@titanbm.co.uk / changeme123')

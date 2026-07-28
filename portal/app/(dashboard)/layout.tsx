@@ -5,19 +5,44 @@ import Link from 'next/link'
 import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
-  Settings, Printer, Send, RotateCcw, LogOut, KeyRound
+  Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
+  Download, Upload, ClipboardList, Route, AtSign
 } from 'lucide-react'
 
-const NAV = [
-  { href: '/dashboard',           label: 'Overview',      icon: LayoutDashboard },
-  { href: '/dashboard/inbox',     label: 'Inbox',         icon: Inbox },
-  { href: '/dashboard/print',     label: 'Print Queue',   icon: Printer },
-  { href: '/dashboard/digital',   label: 'Digital Sent',  icon: Send },
-  { href: '/dashboard/recipients',label: 'Recipients',    icon: Users },
-  { href: '/dashboard/library',   label: 'Insert Library',icon: BookOpen },
-  { href: '/dashboard/rules',     label: 'Dispatch Rules',icon: Settings },
-  { href: '/dashboard/returns',   label: 'Returns',       icon: RotateCcw },
-  { href: '/dashboard/settings',  label: 'Change Password',icon: KeyRound },
+// Navigation grouped into the two modules. Outbound = the existing dispatch
+// flow (unchanged); Inbound = the new digital mailroom.
+const NAV_GROUPS = [
+  {
+    label: 'Outbound',
+    icon: Upload,
+    items: [
+      { href: '/dashboard',           label: 'Overview',       icon: LayoutDashboard },
+      { href: '/dashboard/inbox',     label: 'Dispatch Inbox', icon: Inbox },
+      { href: '/dashboard/print',     label: 'Print Queue',    icon: Printer },
+      { href: '/dashboard/digital',   label: 'Digital Sent',   icon: Send },
+      { href: '/dashboard/recipients',label: 'Recipients',     icon: Users },
+      { href: '/dashboard/library',   label: 'Insert Library', icon: BookOpen },
+      { href: '/dashboard/rules',     label: 'Dispatch Rules', icon: Settings },
+      { href: '/dashboard/returns',   label: 'Returns',        icon: RotateCcw },
+    ],
+  },
+  {
+    label: 'Inbound',
+    icon: Download,
+    items: [
+      { href: '/dashboard/inbound',        label: 'Inbound Tray',  icon: Inbox },
+      { href: '/dashboard/inbound/triage', label: 'Triage Queue',  icon: ClipboardList },
+      { href: '/dashboard/mailboxes',      label: 'Mailboxes',     icon: AtSign },
+      { href: '/dashboard/inbound-rules',  label: 'Routing Rules', icon: Route },
+    ],
+  },
+  {
+    label: 'Account',
+    icon: KeyRound,
+    items: [
+      { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
+    ],
+  },
 ]
 
 function Sidebar() {
@@ -31,26 +56,49 @@ function Sidebar() {
         <div className="w-7 h-7 bg-white/15 rounded-lg flex items-center justify-center">
           <Mail size={14} className="text-white" />
         </div>
-        <span className="font-bold text-white text-base">Jasmitan Mail</span>
+        <span className="font-bold text-white text-base">Mail-IQ</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-          return (
-            <Link key={href} href={href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-white/15 text-white'
-                  : 'text-violet-300 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <Icon size={15} />
-              {label}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 py-4 px-3 space-y-4 overflow-y-auto">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <div className="flex items-center gap-2 px-3 mb-1.5">
+              <group.icon size={12} className="text-violet-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">
+                {group.label}
+              </span>
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map(({ href, label, icon: Icon }) => {
+                // Exact match for section roots, prefix match for sub-pages —
+                // but keep '/dashboard' (Overview) and '/dashboard/inbound'
+                // from swallowing each other's sub-routes.
+                const active =
+                  pathname === href ||
+                  (href !== '/dashboard' &&
+                    href !== '/dashboard/inbound' &&
+                    pathname.startsWith(href + '/')) ||
+                  (href === '/dashboard/inbound' &&
+                    pathname.startsWith('/dashboard/inbound') &&
+                    !pathname.startsWith('/dashboard/inbound/triage') &&
+                    !pathname.startsWith('/dashboard/inbound-rules'))
+                return (
+                  <Link key={href} href={href}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-white/15 text-white'
+                        : 'text-violet-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <Icon size={15} />
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User */}

@@ -11,6 +11,7 @@ const rulesRouter     = require('./routes/rules')
 const batchRouter     = require('./routes/batches')
 const trackRouter     = require('./routes/track')
 const returnRouter    = require('./routes/returns')
+const inboundRouter   = require('./routes/inbound')
 
 const app = express()
 
@@ -32,6 +33,7 @@ app.use('/api/inserts',    insertRouter)
 app.use('/api/rules',      rulesRouter)
 app.use('/api/batches',    batchRouter)
 app.use('/api/returns',    returnRouter)
+app.use('/api/inbound',    inboundRouter)
 
 // Public tracking route (no auth — recipient-facing)
 app.use('/api/track', trackRouter)
@@ -47,4 +49,4 @@ app.use((err, req, res, next) => {
 })
 
 const PORT = process.env.PORT || 3002
-app.listen(PORT, () => console.log(`Jasmitan Mail API running on :${PORT}`))
+app.listen(PORT, () => console.log(`Mail-IQ API running on :${PORT}`))
