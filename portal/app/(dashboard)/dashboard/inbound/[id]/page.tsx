@@ -1,9 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { apiFetch, inboundFileUrl } from '@/lib/api'
-import { ArrowLeft, Send, Ban, Loader2, FileText } from 'lucide-react'
+import { ArrowLeft, Send, Ban, Loader2, FileText, Trash2 } from 'lucide-react'
 
 const STATUS_COLOR: Record<string, string> = {
   RECEIVED:   'bg-amber-100 text-amber-700',
@@ -18,6 +18,7 @@ const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'tif', 'tiff']
 
 export default function InboundItemPage() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
   const [item, setItem] = useState<any>(null)
   const [mailboxes, setMailboxes] = useState<any[]>([])
@@ -50,6 +51,14 @@ export default function InboundItemPage() {
     try {
       await apiFetch(`/api/inbound/items/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason: 'Junk / not actionable' }) })
       await load()
+    } finally { setBusy(false) }
+  }
+  async function deleteItem() {
+    if (!confirm('Delete this item? The document and its history are removed permanently.')) return
+    setBusy(true)
+    try {
+      await apiFetch(`/api/inbound/items/${id}`, { method: 'DELETE' })
+      router.push('/dashboard/inbound')
     } finally { setBusy(false) }
   }
 
@@ -151,6 +160,11 @@ export default function InboundItemPage() {
               )) : <li className="text-xs text-gray-400">No events.</li>}
             </ol>
           </div>
+
+          <button onClick={deleteItem} disabled={busy}
+            className="w-full flex items-center justify-center gap-1.5 border border-gray-200 hover:border-red-300 hover:bg-red-50 text-gray-500 hover:text-red-600 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50">
+            <Trash2 size={15} /> Delete item
+          </button>
         </div>
       </div>
     </div>

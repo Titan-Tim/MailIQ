@@ -186,9 +186,10 @@ export default function InboxPage() {
                   </span>
                   <button
                     onClick={e => deleteDispatch(e, d.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500 transition-all"
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Delete"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={15} />
                   </button>
                   <ChevronRight size={14} className="text-gray-300" />
                 </div>

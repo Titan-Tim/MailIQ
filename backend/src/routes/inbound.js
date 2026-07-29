@@ -50,6 +50,50 @@ router.get('/mailboxes', requireManage, async (req, res) => {
   res.json({ mailboxes: visible })
 })
 
+// Mailboxes whose CONTENT the caller may open (personal + their teams + admin's
+// shared/general). Available to any role — powers "open your mailbox".
+router.get('/my-mailboxes', async (req, res) => {
+  const access = await getInboundAccess(req.user)
+  const ids = [...access.contentMailboxIds]
+  const mailboxes = await prisma.mailbox.findMany({
+    where: { id: { in: ids }, isActive: true },
+    orderBy: [{ ownerUserId: 'asc' }, { name: 'asc' }],
+    include: {
+      _count: { select: { items: true } },
+      team: { select: { id: true, name: true } },
+      ownerUser: { select: { id: true, name: true } },
+    },
+  })
+  res.json({
+    mailboxes: mailboxes.map((m) => ({
+      ...m, kind: m.ownerUserId ? 'PERSONAL' : m.teamId ? 'TEAM' : 'GENERAL',
+    })),
+  })
+})
+
+// Open a mailbox's contents — only if the caller has content access to it
+// (so an admin cannot open someone else's personal inbox).
+router.get('/mailboxes/:id/items', async (req, res) => {
+  const mailbox = await prisma.mailbox.findFirst({
+    where: { id: req.params.id, tenantId: req.user.tenantId },
+    include: { team: { select: { name: true } }, ownerUser: { select: { name: true, email: true } } },
+  })
+  if (!mailbox) return res.status(404).json({ error: 'Not found' })
+  const kind = mailbox.ownerUserId ? 'PERSONAL' : mailbox.teamId ? 'TEAM' : 'GENERAL'
+
+  const access = await getInboundAccess(req.user)
+  if (!access.contentMailboxIds.has(mailbox.id)) {
+    // Reveal that it's a private inbox, but never its contents.
+    return res.status(403).json({ error: 'private', mailbox: { name: mailbox.name, kind } })
+  }
+  const items = await prisma.inboundItem.findMany({
+    where: { tenantId: req.user.tenantId, matchedMailboxId: mailbox.id },
+    orderBy: { receivedAt: 'desc' },
+    take: 200,
+  })
+  res.json({ mailbox: { id: mailbox.id, name: mailbox.name, email: mailbox.email, kind }, items })
+})
+
 router.post('/mailboxes', requireManage, async (req, res) => {
   const { name, department, email, keywords, isDefault, teamId } = req.body
   if (!name || !email) return res.status(400).json({ error: 'name and email required' })
@@ -436,6 +480,27 @@ router.post('/items/:id/reject', requireManage, async (req, res) => {
   })
   await logEvent(item.id, 'REJECTED', req.body?.reason || 'Marked as junk', req.user.email)
   res.json(updated)
+})
+
+// Permanently delete an item and its stored file. Managers can delete anything
+// they can access; a personal-mailbox owner can delete their own post.
+router.delete('/items/:id', async (req, res) => {
+  const item = await prisma.inboundItem.findFirst({
+    where: { id: req.params.id, tenantId: req.user.tenantId },
+  })
+  if (!item) return res.status(404).json({ error: 'Not found' })
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
+
+  const mailbox = item.matchedMailboxId
+    ? await prisma.mailbox.findUnique({ where: { id: item.matchedMailboxId } })
+    : null
+  const ownsPersonal = mailbox && mailbox.ownerUserId === req.user.id
+  if (!access.canManage && !ownsPersonal) return res.status(403).json({ error: 'Forbidden' })
+
+  if (item.fileKey) await storage.deleteFile(item.fileKey)
+  await prisma.inboundItem.delete({ where: { id: item.id } }) // events cascade
+  res.json({ deleted: true })
 })
 
 // ───────────────────────────────── STATS ─────────────────────────────────────

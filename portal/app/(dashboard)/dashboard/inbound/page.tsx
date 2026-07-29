@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { apiFetch, apiUpload } from '@/lib/api'
-import { Inbox, ClipboardList, CheckCircle2, Ban, Plus, X, Loader2, Upload } from 'lucide-react'
+import { Inbox, ClipboardList, CheckCircle2, Ban, Plus, X, Loader2, Upload, Trash2 } from 'lucide-react'
 
 const STATUS_COLOR: Record<string, string> = {
   RECEIVED:   'bg-amber-100 text-amber-700',
@@ -45,6 +46,13 @@ export default function InboundTrayPage() {
   }
   useEffect(() => { load() }, [])
 
+  async function deleteItem(e: React.MouseEvent, id: string) {
+    e.preventDefault(); e.stopPropagation()
+    if (!confirm('Delete this item? The document and its history are removed permanently.')) return
+    await apiFetch(`/api/inbound/items/${id}`, { method: 'DELETE' })
+    await load()
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-start justify-between">
@@ -80,7 +88,8 @@ export default function InboundTrayPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {items.map((it) => (
-              <div key={it.id} className="flex items-center gap-4 px-5 py-3">
+              <Link key={it.id} href={`/dashboard/inbound/${it.id}`}
+                className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{it.fileName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -96,7 +105,11 @@ export default function InboundTrayPage() {
                 <span className="text-xs text-gray-400 w-14 text-right">
                   {new Date(it.receivedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                 </span>
-              </div>
+                <button onClick={(e) => deleteItem(e, it.id)} title="Delete"
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors">
+                  <Trash2 size={15} />
+                </button>
+              </Link>
             ))}
           </div>
         )}

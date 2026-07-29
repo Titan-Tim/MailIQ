@@ -1,9 +1,16 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
 import { AtSign, Plus, Trash2, Star, Loader2 } from 'lucide-react'
 
 const empty = { name: '', department: '', email: '', keywords: '', isDefault: false }
+
+const KIND_BADGE: Record<string, string> = {
+  PERSONAL: 'bg-blue-100 text-blue-700',
+  TEAM:     'bg-violet-100 text-violet-700',
+  GENERAL:  'bg-gray-100 text-gray-600',
+}
 
 export default function MailboxesPage() {
   const [mailboxes, setMailboxes] = useState<any[]>([])
@@ -56,20 +63,23 @@ export default function MailboxesPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {mailboxes.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                    <AtSign size={15} className="text-violet-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm flex items-center gap-1.5">
-                      {m.name}
-                      {m.isDefault && <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full"><Star size={9} /> DEFAULT</span>}
-                    </p>
-                    <p className="text-xs text-gray-400 truncate">
-                      {m.email}{m.department && ` · ${m.department}`}
-                      {m.keywords && ` · keywords: ${m.keywords}`}
-                    </p>
-                  </div>
+                <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                  <Link href={`/dashboard/mailboxes/${m.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+                      <AtSign size={15} className="text-violet-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm flex items-center gap-1.5">
+                        {m.name}
+                        {m.kind && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${KIND_BADGE[m.kind] || ''}`}>{m.kind}</span>}
+                        {m.isDefault && <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full"><Star size={9} /> DEFAULT</span>}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {m.ownerUser ? `${m.ownerUser.name || m.ownerUser.email}` : m.team ? `Team: ${m.team.name}` : m.email}
+                        {m.keywords && ` · keywords: ${m.keywords}`}
+                      </p>
+                    </div>
+                  </Link>
                   <span className="text-xs text-gray-400">{m._count?.items ?? 0} routed</span>
                   <button onClick={() => remove(m.id)} className="text-gray-300 hover:text-red-600 transition-colors" title="Deactivate">
                     <Trash2 size={15} />
