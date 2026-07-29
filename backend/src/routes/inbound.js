@@ -184,6 +184,27 @@ router.get('/items/:id', async (req, res) => {
   res.json(item)
 })
 
+// Serve the stored scan for an inbound item (token via header or ?auth= query,
+// so <embed>/<iframe> previews work).
+router.get('/items/:id/file', async (req, res) => {
+  const item = await prisma.inboundItem.findFirst({
+    where: { id: req.params.id, tenantId: req.user.tenantId },
+  })
+  if (!item || !item.fileKey) return res.status(404).json({ error: 'No file for this item' })
+
+  const ext = (item.fileName.split('.').pop() || '').toLowerCase()
+  const type =
+    ext === 'pdf' ? 'application/pdf' :
+    ['png', 'gif', 'webp'].includes(ext) ? `image/${ext}` :
+    ['jpg', 'jpeg'].includes(ext) ? 'image/jpeg' :
+    ['tif', 'tiff'].includes(ext) ? 'image/tiff' :
+    'application/octet-stream'
+
+  res.setHeader('Content-Type', type)
+  res.setHeader('Content-Disposition', `inline; filename="${item.fileName}"`)
+  res.sendFile(storage.absolutePath(item.fileKey))
+})
+
 /**
  * Run the OCR → classify → route → (deliver | triage) pipeline for one item.
  * Shared by intake and by an explicit re-process call.
