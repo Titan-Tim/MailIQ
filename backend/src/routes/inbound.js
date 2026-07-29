@@ -15,6 +15,13 @@ const { requireAuth } = require('../middleware/auth')
 const ocr = require('../services/ocr')
 const { decideRoute, deliverToMailbox } = require('../services/inbound-router')
 const storage = require('../services/storage')
+const { getInboundAccess, canAccessItem } = require('../services/inbound-access')
+
+// Gate for management actions (log post, route, mailboxes, rules) — staff only.
+function requireManage(req, res, next) {
+  if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'OPERATOR') return next()
+  return res.status(403).json({ error: 'Forbidden' })
+}
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
 
@@ -25,18 +32,35 @@ async function logEvent(itemId, type, detail, actor = 'system') {
 }
 
 // ─────────────────────────────── MAILBOXES ───────────────────────────────────
-router.get('/mailboxes', async (req, res) => {
-  const mailboxes = await prisma.mailbox.findMany({
+router.get('/mailboxes', requireManage, async (req, res) => {
+  const isAdmin = req.user.role === 'SUPER_ADMIN'
+  const all = await prisma.mailbox.findMany({
     where: { tenantId: req.user.tenantId, isActive: true },
     orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
-    include: { _count: { select: { items: true } } },
+    include: {
+      _count: { select: { items: true } },
+      team: { select: { id: true, name: true } },
+      ownerUser: { select: { id: true, name: true, email: true } },
+    },
   })
-  res.json({ mailboxes })
+  // Operators don't see other people's personal mailboxes; admins see that they
+  // exist (owner + count) but the contents stay private via the item endpoints.
+  const visible = (isAdmin ? all : all.filter((m) => !m.ownerUserId || m.ownerUserId === req.user.id))
+    .map((m) => ({ ...m, kind: m.ownerUserId ? 'PERSONAL' : m.teamId ? 'TEAM' : 'GENERAL' }))
+  res.json({ mailboxes: visible })
 })
 
-router.post('/mailboxes', async (req, res) => {
-  const { name, department, email, keywords, isDefault } = req.body
+router.post('/mailboxes', requireManage, async (req, res) => {
+  const { name, department, email, keywords, isDefault, teamId } = req.body
   if (!name || !email) return res.status(400).json({ error: 'name and email required' })
+
+  // A manually-created mailbox is either TEAM-owned (teamId) or GENERAL.
+  // Personal mailboxes are auto-created per user, not through this form.
+  let team = null
+  if (teamId) {
+    team = await prisma.team.findFirst({ where: { id: teamId, tenantId: req.user.tenantId } })
+    if (!team) return res.status(400).json({ error: 'Invalid team' })
+  }
 
   // Only one default catch-all per tenant.
   if (isDefault) {
@@ -53,18 +77,32 @@ router.post('/mailboxes', async (req, res) => {
       email: email.toLowerCase(),
       keywords: keywords || null,
       isDefault: !!isDefault,
+      teamId: team ? team.id : null,
     },
   })
   res.status(201).json(mailbox)
 })
 
-router.put('/mailboxes/:id', async (req, res) => {
+router.put('/mailboxes/:id', requireManage, async (req, res) => {
   const existing = await prisma.mailbox.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
   if (!existing) return res.status(404).json({ error: 'Not found' })
 
-  const { name, department, email, keywords, isDefault, isActive } = req.body
+  const { name, department, email, keywords, isDefault, isActive, teamId } = req.body
+
+  // Team reassignment only applies to non-personal mailboxes.
+  let teamUpdate
+  if (teamId !== undefined && !existing.ownerUserId) {
+    if (teamId) {
+      const team = await prisma.team.findFirst({ where: { id: teamId, tenantId: req.user.tenantId } })
+      if (!team) return res.status(400).json({ error: 'Invalid team' })
+      teamUpdate = team.id
+    } else {
+      teamUpdate = null
+    }
+  }
+
   if (isDefault) {
     await prisma.mailbox.updateMany({
       where: { tenantId: req.user.tenantId, isDefault: true, id: { not: existing.id } },
@@ -80,12 +118,13 @@ router.put('/mailboxes/:id', async (req, res) => {
       keywords: keywords !== undefined ? (keywords || null) : undefined,
       isDefault: isDefault !== undefined ? !!isDefault : undefined,
       isActive: isActive !== undefined ? !!isActive : undefined,
+      teamId: teamUpdate !== undefined ? teamUpdate : undefined,
     },
   })
   res.json(updated)
 })
 
-router.delete('/mailboxes/:id', async (req, res) => {
+router.delete('/mailboxes/:id', requireManage, async (req, res) => {
   const existing = await prisma.mailbox.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
@@ -95,7 +134,7 @@ router.delete('/mailboxes/:id', async (req, res) => {
 })
 
 // ───────────────────────────────── RULES ─────────────────────────────────────
-router.get('/rules', async (req, res) => {
+router.get('/rules', requireManage, async (req, res) => {
   const rules = await prisma.inboundRoutingRule.findMany({
     where: { tenantId: req.user.tenantId },
     orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
@@ -104,7 +143,7 @@ router.get('/rules', async (req, res) => {
   res.json({ rules })
 })
 
-router.post('/rules', async (req, res) => {
+router.post('/rules', requireManage, async (req, res) => {
   const { name, priority, matchType, documentType, keyword, targetMailboxId } = req.body
   if (!name) return res.status(400).json({ error: 'name required' })
   if (!documentType && !keyword) {
@@ -124,7 +163,7 @@ router.post('/rules', async (req, res) => {
   res.status(201).json(rule)
 })
 
-router.put('/rules/:id', async (req, res) => {
+router.put('/rules/:id', requireManage, async (req, res) => {
   const existing = await prisma.inboundRoutingRule.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
@@ -145,7 +184,7 @@ router.put('/rules/:id', async (req, res) => {
   res.json(updated)
 })
 
-router.delete('/rules/:id', async (req, res) => {
+router.delete('/rules/:id', requireManage, async (req, res) => {
   const existing = await prisma.inboundRoutingRule.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
@@ -157,8 +196,14 @@ router.delete('/rules/:id', async (req, res) => {
 // ───────────────────────────────── ITEMS ─────────────────────────────────────
 router.get('/items', async (req, res) => {
   const { status, limit = '100', offset = '0' } = req.query
-  const where = { tenantId: req.user.tenantId }
-  if (status) where.status = status
+  const access = await getInboundAccess(req.user)
+  const ids = [...access.contentMailboxIds]
+  const scope = access.canSeeTriage
+    ? { OR: [{ matchedMailboxId: { in: ids } }, { matchedMailboxId: null }] }
+    : { matchedMailboxId: { in: ids } }
+  const and = [{ tenantId: req.user.tenantId }, scope]
+  if (status) and.push({ status })
+  const where = { AND: and }
   const [items, total] = await Promise.all([
     prisma.inboundItem.findMany({
       where,
@@ -181,6 +226,9 @@ router.get('/items/:id', async (req, res) => {
     },
   })
   if (!item) return res.status(404).json({ error: 'Not found' })
+  // Privacy: only reveal items the caller may see (404 avoids leaking existence).
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
   res.json(item)
 })
 
@@ -191,6 +239,8 @@ router.get('/items/:id/file', async (req, res) => {
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
   if (!item || !item.fileKey) return res.status(404).json({ error: 'No file for this item' })
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
 
   const ext = (item.fileName.split('.').pop() || '').toLowerCase()
   const type =
@@ -200,9 +250,14 @@ router.get('/items/:id/file', async (req, res) => {
     ['tif', 'tiff'].includes(ext) ? 'image/tiff' :
     'application/octet-stream'
 
-  res.setHeader('Content-Type', type)
-  res.setHeader('Content-Disposition', `inline; filename="${item.fileName}"`)
-  res.sendFile(storage.absolutePath(item.fileKey))
+  try {
+    const buf = await storage.readFile(item.fileKey)
+    res.setHeader('Content-Type', type)
+    res.setHeader('Content-Disposition', `inline; filename="${item.fileName}"`)
+    res.send(buf)
+  } catch {
+    res.status(404).json({ error: 'File not found' })
+  }
 })
 
 /**
@@ -211,7 +266,7 @@ router.get('/items/:id/file', async (req, res) => {
  */
 async function runPipeline(item, actor) {
   // 1. OCR + classify (stub honours any hints already stored on the item).
-  const buffer = item.fileKey ? safeRead(item.fileKey) : null
+  const buffer = item.fileKey ? await safeRead(item.fileKey) : null
   const result = await ocr.extract({
     buffer,
     fileName: item.fileName,
@@ -273,8 +328,8 @@ async function runPipeline(item, actor) {
   return item
 }
 
-function safeRead(fileKey) {
-  try { return storage.readFile(fileKey) } catch { return null }
+async function safeRead(fileKey) {
+  try { return await storage.readFile(fileKey) } catch { return null }
 }
 
 /**
@@ -283,7 +338,7 @@ function safeRead(fileKey) {
  * the latter lets an operator or a scan-email agent feed the pipeline without a
  * real OCR engine. Runs the full pipeline immediately.
  */
-router.post('/items', upload.single('file'), async (req, res) => {
+router.post('/items', requireManage, upload.single('file'), async (req, res) => {
   try {
     const body = req.body || {}
     let fileKey = null
@@ -292,7 +347,7 @@ router.post('/items', upload.single('file'), async (req, res) => {
 
     if (req.file) {
       const ext = (req.file.originalname.split('.').pop() || 'pdf').toLowerCase()
-      fileKey = storage.saveFile(req.file.buffer, 'inbound', ext)
+      fileKey = await storage.saveFile(req.file.buffer, 'inbound', ext)
       fileName = req.file.originalname
       fileSizeBytes = req.file.size
     }
@@ -325,22 +380,26 @@ router.post('/items', upload.single('file'), async (req, res) => {
 })
 
 // Re-run the pipeline (e.g. after rules changed).
-router.post('/items/:id/process', async (req, res) => {
+router.post('/items/:id/process', requireManage, async (req, res) => {
   const item = await prisma.inboundItem.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
   if (!item) return res.status(404).json({ error: 'Not found' })
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
   const updated = await runPipeline(item, req.user.email)
   res.json(updated)
 })
 
 // Manual triage: reroute to a chosen mailbox and deliver.
-router.post('/items/:id/reroute', async (req, res) => {
+router.post('/items/:id/reroute', requireManage, async (req, res) => {
   const { mailboxId } = req.body
   const item = await prisma.inboundItem.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
   if (!item) return res.status(404).json({ error: 'Not found' })
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
   const mailbox = await prisma.mailbox.findFirst({
     where: { id: mailboxId, tenantId: req.user.tenantId, isActive: true },
   })
@@ -364,11 +423,13 @@ router.post('/items/:id/reroute', async (req, res) => {
   res.json(updated)
 })
 
-router.post('/items/:id/reject', async (req, res) => {
+router.post('/items/:id/reject', requireManage, async (req, res) => {
   const item = await prisma.inboundItem.findFirst({
     where: { id: req.params.id, tenantId: req.user.tenantId },
   })
   if (!item) return res.status(404).json({ error: 'Not found' })
+  const access = await getInboundAccess(req.user)
+  if (!canAccessItem(access, item)) return res.status(404).json({ error: 'Not found' })
   const updated = await prisma.inboundItem.update({
     where: { id: item.id },
     data: { status: 'REJECTED' },
@@ -378,17 +439,26 @@ router.post('/items/:id/reject', async (req, res) => {
 })
 
 // ───────────────────────────────── STATS ─────────────────────────────────────
+// Counts are scoped to what the caller may see (respects the privacy model).
 router.get('/stats', async (req, res) => {
-  const tenantId = req.user.tenantId
-  const [received, triage, delivered, rejected, mailboxes, rules] = await Promise.all([
-    prisma.inboundItem.count({ where: { tenantId, status: 'RECEIVED' } }),
-    prisma.inboundItem.count({ where: { tenantId, status: 'TRIAGE' } }),
-    prisma.inboundItem.count({ where: { tenantId, status: 'DELIVERED' } }),
-    prisma.inboundItem.count({ where: { tenantId, status: 'REJECTED' } }),
-    prisma.mailbox.count({ where: { tenantId, isActive: true } }),
-    prisma.inboundRoutingRule.count({ where: { tenantId, isActive: true } }),
+  const access = await getInboundAccess(req.user)
+  const ids = [...access.contentMailboxIds]
+  const scope = access.canSeeTriage
+    ? { OR: [{ matchedMailboxId: { in: ids } }, { matchedMailboxId: null }] }
+    : { matchedMailboxId: { in: ids } }
+  const forStatus = (s) => ({ AND: [{ tenantId: req.user.tenantId }, scope, { status: s }] })
+  const [received, triage, delivered, rejected] = await Promise.all([
+    prisma.inboundItem.count({ where: forStatus('RECEIVED') }),
+    prisma.inboundItem.count({ where: forStatus('TRIAGE') }),
+    prisma.inboundItem.count({ where: forStatus('DELIVERED') }),
+    prisma.inboundItem.count({ where: forStatus('REJECTED') }),
   ])
-  res.json({ received, triage, delivered, rejected, mailboxes, rules })
+  res.json({
+    received, triage, delivered, rejected,
+    mailboxes: access.contentMailboxIds.size,
+    canManage: access.canManage,
+    isAdmin: access.isAdmin,
+  })
 })
 
 module.exports = router

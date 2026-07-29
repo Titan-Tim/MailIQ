@@ -70,8 +70,8 @@ router.post('/:id/generate', async (req, res) => {
   try {
     const merged = await composer.mergePdfs(fileKeys)
 
-    if (batch.mergedFileKey) storage.deleteFile(batch.mergedFileKey)
-    const mergedKey = storage.saveFile(merged, 'batch')
+    if (batch.mergedFileKey) await storage.deleteFile(batch.mergedFileKey)
+    const mergedKey = await storage.saveFile(merged, 'batch')
 
     const updated = await prisma.printBatch.update({
       where: { id: req.params.id },
@@ -93,9 +93,14 @@ router.get('/:id/download', async (req, res) => {
   if (!batch.mergedFileKey) return res.status(404).json({ error: 'Not generated yet' })
 
   const fileName = `${batch.name.replace(/[^a-z0-9]/gi, '_')}.pdf`
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
-  res.sendFile(storage.absolutePath(batch.mergedFileKey))
+  try {
+    const buf = await storage.readFile(batch.mergedFileKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+    res.send(buf)
+  } catch {
+    res.status(404).json({ error: 'File not found' })
+  }
 })
 
 // POST /api/batches/:id/mark-printed
@@ -148,7 +153,7 @@ router.delete('/:id', async (req, res) => {
     data:  { status: 'READY' }
   })
 
-  if (batch.mergedFileKey) storage.deleteFile(batch.mergedFileKey)
+  if (batch.mergedFileKey) await storage.deleteFile(batch.mergedFileKey)
   await prisma.printBatch.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })

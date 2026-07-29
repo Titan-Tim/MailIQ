@@ -35,7 +35,7 @@ router.post('/', upload.single('file'), async (req, res) => {
   const { name, description, category } = req.body
   if (!name) return res.status(400).json({ error: 'name required' })
 
-  const fileKey = storage.saveFile(req.file.buffer, 'insert')
+  const fileKey = await storage.saveFile(req.file.buffer, 'insert')
 
   const ins = await prisma.insert.create({
     data: {
@@ -57,9 +57,14 @@ router.get('/:id/file', async (req, res) => {
     where: { id: req.params.id, tenantId: req.user.tenantId }
   })
   if (!ins) return res.status(404).json({ error: 'Not found' })
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `inline; filename="${ins.fileName}"`)
-  res.sendFile(storage.absolutePath(ins.fileKey))
+  try {
+    const buf = await storage.readFile(ins.fileKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="${ins.fileName}"`)
+    res.send(buf)
+  } catch {
+    res.status(404).json({ error: 'File not found' })
+  }
 })
 
 // PUT /api/inserts/:id
@@ -89,7 +94,7 @@ router.delete('/:id', async (req, res) => {
   })
   if (!existing) return res.status(404).json({ error: 'Not found' })
 
-  storage.deleteFile(existing.fileKey)
+  await storage.deleteFile(existing.fileKey)
   await prisma.insert.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
 })

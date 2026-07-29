@@ -12,6 +12,7 @@ const crypto = require('crypto')
 const prisma = require('../db')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { sendInviteEmail } = require('../services/email')
+const { ensurePersonalMailbox } = require('../services/inbound-access')
 
 const ROLES = ['SUPER_ADMIN', 'OPERATOR', 'VIEWER']
 
@@ -78,6 +79,9 @@ router.post('/', async (req, res) => {
       mustChangePassword: true,
     },
   })
+
+  // Every user gets their own private personal mailbox.
+  try { await ensurePersonalMailbox(user) } catch (e) { console.error('personal mailbox create failed:', e.message) }
 
   let emailSent = false
   try {

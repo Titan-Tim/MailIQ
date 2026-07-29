@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
+    "@vercel/blob": "^2.6.1",
     "bcryptjs": "^2.4.3",
     "bwip-js": "^3.4.0",
     "cors": "^2.8.5",

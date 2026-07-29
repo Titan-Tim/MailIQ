@@ -32,10 +32,14 @@ router.get('/:token', async (req, res) => {
   const fileKey = dispatch.composedFileKey || dispatch.originalFileKey
   if (!fileKey) return res.status(404).send('Document not available.')
 
-  const filePath = storage.absolutePath(fileKey)
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `inline; filename="document.pdf"`)
-  res.sendFile(filePath)
+  try {
+    const buf = await storage.readFile(fileKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="document.pdf"`)
+    res.send(buf)
+  } catch {
+    res.status(404).send('Document not available.')
+  }
 })
 
 // GET /api/track/:token/download — same but force download
@@ -59,9 +63,14 @@ router.get('/:token/download', async (req, res) => {
   const fileKey = dispatch.composedFileKey || dispatch.originalFileKey
   if (!fileKey) return res.status(404).send('Document not available.')
 
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `attachment; filename="document.pdf"`)
-  res.sendFile(storage.absolutePath(fileKey))
+  try {
+    const buf = await storage.readFile(fileKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="document.pdf"`)
+    res.send(buf)
+  } catch {
+    res.status(404).send('Document not available.')
+  }
 })
 
 module.exports = router

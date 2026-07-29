@@ -64,7 +64,7 @@ async function generateBarcodePng(text) {
  */
 async function composeDispatch(dispatch, recipient, inserts, tenant) {
   // Load original document
-  const originalBytes = storage.readFile(dispatch.originalFileKey)
+  const originalBytes = await storage.readFile(dispatch.originalFileKey)
   const pdfDoc = await PDFDocument.load(originalBytes)
 
   const helvetica     = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -131,7 +131,7 @@ async function composeDispatch(dispatch, recipient, inserts, tenant) {
   // ── Append inserts ────────────────────────────────────────────────────────
   for (const ins of inserts) {
     try {
-      const insBytes = storage.readFile(ins.fileKey)
+      const insBytes = await storage.readFile(ins.fileKey)
       const insPdf   = await PDFDocument.load(insBytes)
       const copied   = await pdfDoc.copyPages(insPdf, insPdf.getPageIndices())
       copied.forEach(p => pdfDoc.addPage(p))
@@ -155,7 +155,7 @@ async function mergePdfs(fileKeys) {
   const merged = await PDFDocument.create()
   for (const key of fileKeys) {
     try {
-      const bytes = storage.readFile(key)
+      const bytes = await storage.readFile(key)
       const src   = await PDFDocument.load(bytes)
       const pages = await merged.copyPages(src, src.getPageIndices())
       pages.forEach(p => merged.addPage(p))

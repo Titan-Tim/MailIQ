@@ -78,7 +78,7 @@ function resolveDeliveryMethod(recipient, ruleOverride) {
 router.post('/ingest', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'PDF file required' })
 
-  const fileKey     = storage.saveFile(req.file.buffer, 'original')
+  const fileKey     = await storage.saveFile(req.file.buffer, 'original')
   const barcodeCode = await uniqueBarcodeCode()
 
   const dispatch = await prisma.dispatch.create({
@@ -170,11 +170,15 @@ router.get('/:id/file', async (req, res) => {
 
   const useComposed = req.query.composed === '1' && dispatch.composedFileKey
   const fileKey = useComposed ? dispatch.composedFileKey : dispatch.originalFileKey
-  const filePath = storage.absolutePath(fileKey)
 
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `inline; filename="${dispatch.originalFileName}"`)
-  res.sendFile(filePath)
+  try {
+    const buf = await storage.readFile(fileKey)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `inline; filename="${dispatch.originalFileName}"`)
+    res.send(buf)
+  } catch {
+    res.status(404).json({ error: 'File not found' })
+  }
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -273,9 +277,9 @@ router.post('/:id/compose', async (req, res) => {
     const composedBuffer = await composer.composeDispatch(dispatch, dispatch.recipient, inserts, tenant)
 
     // Delete old composed file if present
-    if (dispatch.composedFileKey) storage.deleteFile(dispatch.composedFileKey)
+    if (dispatch.composedFileKey) await storage.deleteFile(dispatch.composedFileKey)
 
-    const composedKey = storage.saveFile(composedBuffer, 'composed')
+    const composedKey = await storage.saveFile(composedBuffer, 'composed')
 
     // Resolve delivery method
     const ruleInserts = await resolveRuleInserts(req.user.tenantId, dispatch.documentType)
@@ -416,8 +420,8 @@ router.delete('/:id', async (req, res) => {
   if (!dispatch) return res.status(404).json({ error: 'Not found' })
 
   // Clean up files
-  if (dispatch.originalFileKey) storage.deleteFile(dispatch.originalFileKey)
-  if (dispatch.composedFileKey) storage.deleteFile(dispatch.composedFileKey)
+  if (dispatch.originalFileKey) await storage.deleteFile(dispatch.originalFileKey)
+  if (dispatch.composedFileKey) await storage.deleteFile(dispatch.composedFileKey)
 
   await prisma.dispatch.delete({ where: { id: req.params.id } })
   res.json({ deleted: true })
