@@ -193,7 +193,7 @@ export default function ComposePage() {
   }
 
   if (loading) return <div className="p-6 text-gray-400 text-sm">Loading…</div>
-  if (!dispatch) return <div className="p-6 text-red-500">Dispatch not found.</div>
+  if (!dispatch) return <div className="p-6 text-red-500">Item not found.</div>
 
   const isComposed = !!dispatch.composedFileKey
   const isSent = ['SENT', 'QUEUED'].includes(dispatch.status)

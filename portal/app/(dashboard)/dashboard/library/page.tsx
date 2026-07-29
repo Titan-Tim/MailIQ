@@ -69,7 +69,7 @@ export default function LibraryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Insert Library</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {inserts.length} document{inserts.length !== 1 ? 's' : ''} available to attach to dispatches
+            {inserts.length} document{inserts.length !== 1 ? 's' : ''} available to attach to mailings
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
@@ -160,7 +160,7 @@ export default function LibraryPage() {
                           {ins.description && <p className="text-xs text-gray-400 mt-0.5">{ins.description}</p>}
                           <p className="text-xs text-gray-400 mt-0.5">
                             {ins.fileName} · {(ins.fileSizeBytes / 1024).toFixed(0)} KB
-                            · used in {ins._count?.dispatchInserts || 0} dispatch{ins._count?.dispatchInserts !== 1 ? 'es' : ''}
+                            · used in {ins._count?.dispatchInserts || 0} mailing{ins._count?.dispatchInserts !== 1 ? 's' : ''}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">

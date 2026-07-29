@@ -75,7 +75,7 @@ export default function InboxPage() {
   async function deleteDispatch(e: React.MouseEvent, id: string) {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm('Delete this dispatch? This cannot be undone.')) return
+    if (!confirm('Delete this item? This cannot be undone.')) return
     await apiFetch(`/api/dispatches/${id}`, { method: 'DELETE' })
     load()
   }
@@ -84,7 +84,7 @@ export default function InboxPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Outbox</h1>
           <p className="text-gray-500 text-sm mt-0.5">{total} document{total !== 1 ? 's' : ''} in system</p>
         </div>
         <button

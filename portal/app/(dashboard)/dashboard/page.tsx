@@ -102,12 +102,12 @@ export default function DashboardPage() {
           {/* Recent dispatches */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">Recent dispatches</h2>
+              <h2 className="font-semibold text-gray-800">Recent mail</h2>
               <a href="/dashboard/inbox" className="text-violet-700 text-sm font-medium hover:underline">View all</a>
             </div>
             <div className="divide-y divide-gray-100">
               {recent.length === 0 ? (
-                <p className="px-5 py-8 text-center text-gray-400 text-sm">No dispatches yet. Upload a document from the Inbox.</p>
+                <p className="px-5 py-8 text-center text-gray-400 text-sm">No mail yet. Upload a document from the Outbox.</p>
               ) : recent.map((d: any) => (
                 <a key={d.id} href={`/dashboard/inbox/${d.id}`}
                   className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors">

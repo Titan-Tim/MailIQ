@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Mail-IQ</h1>
-            <p className="text-violet-300 text-sm">Document Dispatch Management</p>
+            <p className="text-violet-300 text-sm">Inbound &amp; Outbound Mail Management</p>
           </div>
         </div>
 

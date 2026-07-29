@@ -62,7 +62,7 @@ export default function RecipientsPage() {
   }
 
   async function deleteRecipient(id: string) {
-    if (!confirm('Remove this recipient? Their dispatch history is preserved.')) return
+    if (!confirm('Remove this recipient? Their mailing history is preserved.')) return
     await apiFetch(`/api/recipients/${id}`, { method: 'DELETE' })
     load()
   }
