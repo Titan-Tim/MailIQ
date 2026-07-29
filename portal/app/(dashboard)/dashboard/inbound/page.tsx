@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { apiFetch } from '@/lib/api'
-import { Inbox, ClipboardList, CheckCircle2, Ban, Plus, X, Loader2 } from 'lucide-react'
+import { apiFetch, apiUpload } from '@/lib/api'
+import { Inbox, ClipboardList, CheckCircle2, Ban, Plus, X, Loader2, Upload } from 'lucide-react'
 
 const STATUS_COLOR: Record<string, string> = {
   RECEIVED:   'bg-amber-100 text-amber-700',
@@ -112,23 +112,38 @@ function IntakeModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
   const [extractedName, setExtractedName] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [ocrText, setOcrText] = useState('')
+  const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState('')
 
   async function submit() {
+    if (!file && !fileName) { setError('Upload a file or enter a file name'); return }
     setBusy(true); setError('')
     try {
-      const item = await apiFetch('/api/inbound/items', {
-        method: 'POST',
-        body: JSON.stringify({
-          fileName: fileName || 'scan.pdf',
-          extractedName: extractedName || undefined,
-          documentType: documentType || undefined,
-          ocrText: ocrText || undefined,
-          source: 'manual',
-        }),
-      })
+      let item
+      if (file) {
+        // Real file upload (multipart) — the backend stores the scan.
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('source', 'upload')
+        if (extractedName) fd.append('extractedName', extractedName)
+        if (documentType) fd.append('documentType', documentType)
+        if (ocrText) fd.append('ocrText', ocrText)
+        item = await apiUpload('/api/inbound/items', fd)
+      } else {
+        // Manual log — no file, just the details a scanner would extract.
+        item = await apiFetch('/api/inbound/items', {
+          method: 'POST',
+          body: JSON.stringify({
+            fileName: fileName || 'scan.pdf',
+            extractedName: extractedName || undefined,
+            documentType: documentType || undefined,
+            ocrText: ocrText || undefined,
+            source: 'manual',
+          }),
+        })
+      }
       setResult(item)
     } catch (e: any) {
       setError(e.message)
@@ -148,9 +163,20 @@ function IntakeModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         {!result ? (
           <div className="p-5 space-y-4">
             <p className="text-xs text-gray-500">
-              With the stub OCR engine you can type the details a real scanner would extract. Fill what you know and the
-              pipeline will classify and route it live.
+              Upload a scanned document, or just type the details a scanner would extract. Either way the pipeline
+              classifies and routes it live. (The stub OCR routes on the file name and any details you add — a real OCR
+              engine will read the file contents automatically.)
             </p>
+            <Field label="Upload document (PDF or image)">
+              <label className="flex items-center gap-3 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-violet-400 transition-colors">
+                <Upload size={18} className="text-violet-600 shrink-0" />
+                <span className={`text-sm truncate ${file ? 'text-gray-800' : 'text-gray-500'}`}>
+                  {file ? file.name : 'Choose a scanned file…'}
+                </span>
+                <input type="file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f) setFileName(f.name) }} />
+              </label>
+            </Field>
             <Field label="File name">
               <input value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="e.g. acme-invoice-2291.pdf"
                 className="input" />
