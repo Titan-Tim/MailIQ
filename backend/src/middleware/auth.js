@@ -3,11 +3,17 @@ const prisma = require('../db')
 
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  // Accept the token from the Authorization header, or from a ?auth= / ?token=
+  // query param — needed for <embed>/<iframe> file previews (e.g. the PDF
+  // viewer), which cannot set request headers.
+  const token = header?.startsWith('Bearer ')
+    ? header.slice(7)
+    : (req.query.auth || req.query.token)
+  if (!token) {
     return res.status(401).json({ error: 'Unauthorised' })
   }
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET)
+    const payload = jwt.verify(token, process.env.JWT_SECRET)
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: { tenant: true }
