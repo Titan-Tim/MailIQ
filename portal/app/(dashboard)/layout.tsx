@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { AuthProvider, useAuth } from '@/lib/auth-context'
@@ -9,12 +9,16 @@ import {
   Download, Upload, ClipboardList, Route, AtSign
 } from 'lucide-react'
 
-// Navigation grouped into the two modules. Outbound = the existing dispatch
-// flow (unchanged); Inbound = the new digital mailroom.
-const NAV_GROUPS = [
-  {
+// The app is split into two modules the user switches between. Outbound = the
+// existing dispatch flow; Inbound = the digital mailroom. Account items are
+// global and pinned at the bottom regardless of the active module.
+type ModuleKey = 'outbound' | 'inbound'
+
+const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items: any[] }> = {
+  outbound: {
     label: 'Outbound',
     icon: Upload,
+    home: '/dashboard',
     items: [
       { href: '/dashboard',           label: 'Overview',       icon: LayoutDashboard },
       { href: '/dashboard/inbox',     label: 'Dispatch Inbox', icon: Inbox },
@@ -26,9 +30,10 @@ const NAV_GROUPS = [
       { href: '/dashboard/returns',   label: 'Returns',        icon: RotateCcw },
     ],
   },
-  {
+  inbound: {
     label: 'Inbound',
     icon: Download,
+    home: '/dashboard/inbound',
     items: [
       { href: '/dashboard/inbound',        label: 'Inbound Tray',  icon: Inbox },
       { href: '/dashboard/inbound/triage', label: 'Triage Queue',  icon: ClipboardList },
@@ -36,19 +41,75 @@ const NAV_GROUPS = [
       { href: '/dashboard/inbound-rules',  label: 'Routing Rules', icon: Route },
     ],
   },
-  {
-    label: 'Account',
-    icon: KeyRound,
-    items: [
-      { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
-      { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
-    ],
-  },
+}
+
+const ACCOUNT_ITEMS = [
+  { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
+  { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
 ]
+
+// Which module a given path belongs to. Account pages (team/settings) belong to
+// neither — they keep whatever module was last active.
+function moduleForPath(p: string): ModuleKey | null {
+  if (
+    p.startsWith('/dashboard/inbound') ||
+    p.startsWith('/dashboard/mailboxes') ||
+    p.startsWith('/dashboard/inbound-rules')
+  ) return 'inbound'
+  if (p === '/dashboard/team' || p === '/dashboard/settings') return null
+  return 'outbound'
+}
 
 function Sidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
+  const [module, setModule] = useState<ModuleKey>('outbound')
+
+  // Keep the active module in sync with the current route, and remember it so a
+  // direct link (or an account page) shows the right module's tabs.
+  useEffect(() => {
+    const m = moduleForPath(pathname)
+    if (m) {
+      setModule(m)
+      try { localStorage.setItem('mailiq_module', m) } catch {}
+    } else {
+      try {
+        const saved = localStorage.getItem('mailiq_module')
+        if (saved === 'inbound' || saved === 'outbound') setModule(saved)
+      } catch {}
+    }
+  }, [pathname])
+
+  function switchModule(m: ModuleKey) {
+    if (m === module) return
+    setModule(m)
+    try { localStorage.setItem('mailiq_module', m) } catch {}
+    router.push(MODULES[m].home)
+  }
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard'
+    if (href === '/dashboard/inbound') return pathname === '/dashboard/inbound'
+    return pathname === href || pathname.startsWith(href + '/')
+  }
+
+  const NavLink = ({ href, label, icon: Icon }: any) => (
+    <Link href={href}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        isActive(href)
+          ? 'bg-white/15 text-white'
+          : 'text-violet-300 hover:bg-white/10 hover:text-white'
+      }`}
+    >
+      <Icon size={15} />
+      {label}
+    </Link>
+  )
+
+  const accountItems = ACCOUNT_ITEMS.filter(
+    (it: any) => !it.superAdminOnly || user?.role === 'SUPER_ADMIN'
+  )
 
   return (
     <aside className="fixed inset-y-0 left-0 w-56 bg-violet-900 flex flex-col">
@@ -60,54 +121,36 @@ function Sidebar() {
         <span className="font-bold text-white text-base">Mail-IQ</span>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-3 space-y-4 overflow-y-auto">
-        {NAV_GROUPS.map((group) => {
-          // Hide SUPER_ADMIN-only items from other roles; drop empty groups.
-          const items = group.items.filter(
-            (it: any) => !it.superAdminOnly || user?.role === 'SUPER_ADMIN'
-          )
-          if (items.length === 0) return null
-          return (
-          <div key={group.label}>
-            <div className="flex items-center gap-2 px-3 mb-1.5">
-              <group.icon size={12} className="text-violet-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-400">
-                {group.label}
-              </span>
-            </div>
-            <div className="space-y-0.5">
-              {items.map(({ href, label, icon: Icon }) => {
-                // Exact match for section roots, prefix match for sub-pages —
-                // but keep '/dashboard' (Overview) and '/dashboard/inbound'
-                // from swallowing each other's sub-routes.
-                const active =
-                  pathname === href ||
-                  (href !== '/dashboard' &&
-                    href !== '/dashboard/inbound' &&
-                    pathname.startsWith(href + '/')) ||
-                  (href === '/dashboard/inbound' &&
-                    pathname.startsWith('/dashboard/inbound') &&
-                    !pathname.startsWith('/dashboard/inbound/triage') &&
-                    !pathname.startsWith('/dashboard/inbound-rules'))
-                return (
-                  <Link key={href} href={href}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-white/15 text-white'
-                        : 'text-violet-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <Icon size={15} />
-                    {label}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-          )
-        })}
+      {/* Module switcher */}
+      <div className="px-3 pt-3">
+        <div className="flex bg-black/20 rounded-lg p-1">
+          {(Object.keys(MODULES) as ModuleKey[]).map((key) => {
+            const M = MODULES[key]
+            const on = module === key
+            return (
+              <button key={key} onClick={() => switchModule(key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-md transition-colors ${
+                  on ? 'bg-white/15 text-white' : 'text-violet-300 hover:text-white'
+                }`}
+              >
+                <M.icon size={13} /> {M.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Active module's tabs */}
+      <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
+        {MODULES[module].items.map((item) => <NavLink key={item.href} {...item} />)}
       </nav>
+
+      {/* Account — pinned, shown in both modules */}
+      {accountItems.length > 0 && (
+        <div className="px-3 py-2 border-t border-violet-800 space-y-0.5">
+          {accountItems.map((item) => <NavLink key={item.href} {...item} />)}
+        </div>
+      )}
 
       {/* User */}
       <div className="p-3 border-t border-violet-800">
