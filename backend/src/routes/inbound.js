@@ -16,20 +16,21 @@ const ocr = require('../services/ocr')
 const { decideRoute, deliverToMailbox } = require('../services/inbound-router')
 const storage = require('../services/storage')
 const { getInboundAccess, canAccessItem } = require('../services/inbound-access')
+const { logEvent, runPipeline, createAndProcess } = require('../services/inbound-pipeline')
 
 // Gate for management actions (log post, route, mailboxes, rules) — staff only.
 function requireManage(req, res, next) {
   if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'OPERATOR') return next()
   return res.status(403).json({ error: 'Forbidden' })
 }
+function requireAdmin(req, res, next) {
+  if (req.user.role === 'SUPER_ADMIN') return next()
+  return res.status(403).json({ error: 'Forbidden' })
+}
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
 
 router.use(requireAuth)
-
-async function logEvent(itemId, type, detail, actor = 'system') {
-  await prisma.inboundEvent.create({ data: { itemId, type, detail, actor } })
-}
 
 // ─────────────────────────────── MAILBOXES ───────────────────────────────────
 router.get('/mailboxes', requireManage, async (req, res) => {
@@ -305,116 +306,21 @@ router.get('/items/:id/file', async (req, res) => {
 })
 
 /**
- * Run the OCR → classify → route → (deliver | triage) pipeline for one item.
- * Shared by intake and by an explicit re-process call.
- */
-async function runPipeline(item, actor) {
-  // 1. OCR + classify (stub honours any hints already stored on the item).
-  const buffer = item.fileKey ? await safeRead(item.fileKey) : null
-  const result = await ocr.extract({
-    buffer,
-    fileName: item.fileName,
-    hints: {
-      ocrText: item.ocrText || undefined,
-      extractedName: item.extractedName || undefined,
-      documentType: item.documentType || undefined,
-    },
-  })
-  await logEvent(item.id, 'OCR', `engine=${result.engine} type=${result.documentType} conf=${result.confidence}`, actor)
-
-  item = await prisma.inboundItem.update({
-    where: { id: item.id },
-    data: {
-      ocrText: result.text,
-      extractedName: result.extractedName || null,
-      documentType: result.documentType,
-      confidence: result.confidence,
-      status: 'CLASSIFIED',
-      processedAt: new Date(),
-    },
-  })
-  await logEvent(item.id, 'CLASSIFIED', `addressee="${item.extractedName || ''}"`, actor)
-
-  // 2. Route.
-  const [rules, mailboxes] = await Promise.all([
-    prisma.inboundRoutingRule.findMany({ where: { tenantId: item.tenantId, isActive: true } }),
-    prisma.mailbox.findMany({ where: { tenantId: item.tenantId, isActive: true } }),
-  ])
-  const decision = decideRoute(item, rules, mailboxes)
-
-  item = await prisma.inboundItem.update({
-    where: { id: item.id },
-    data: {
-      matchedMailboxId: decision.mailboxId,
-      matchedRuleId: decision.ruleId,
-      routingReason: decision.reason,
-      confidence: decision.confidence,
-      status: decision.status === 'DELIVERED' ? 'CLASSIFIED' : 'TRIAGE',
-    },
-  })
-  await logEvent(item.id, 'ROUTED', decision.reason, actor)
-
-  // 3. Auto-deliver when confident and matched.
-  if (decision.status === 'DELIVERED' && decision.mailboxId) {
-    const mailbox = mailboxes.find((m) => m.id === decision.mailboxId)
-    const tenant = await prisma.tenant.findUnique({ where: { id: item.tenantId } })
-    const sent = await deliverToMailbox(item, mailbox, tenant)
-    item = await prisma.inboundItem.update({
-      where: { id: item.id },
-      data: {
-        status: 'DELIVERED',
-        deliveredEmail: mailbox.email,
-        deliveredAt: new Date(),
-      },
-    })
-    await logEvent(item.id, 'DELIVERED', sent ? `Emailed ${mailbox.email}` : `Queued for ${mailbox.email} (email not configured)`, actor)
-  }
-  return item
-}
-
-async function safeRead(fileKey) {
-  try { return await storage.readFile(fileKey) } catch { return null }
-}
-
-/**
  * Intake. Accepts either a multipart file upload, or a JSON body with a
  * fileName plus optional OCR hints (ocrText / extractedName / documentType) —
- * the latter lets an operator or a scan-email agent feed the pipeline without a
- * real OCR engine. Runs the full pipeline immediately.
+ * the latter lets an operator feed the pipeline without a real OCR engine.
+ * Runs the full pipeline immediately.
  */
 router.post('/items', requireManage, upload.single('file'), async (req, res) => {
   try {
     const body = req.body || {}
-    let fileKey = null
-    let fileName = body.fileName || 'scan.pdf'
-    let fileSizeBytes = 0
-
-    if (req.file) {
-      const ext = (req.file.originalname.split('.').pop() || 'pdf').toLowerCase()
-      fileKey = await storage.saveFile(req.file.buffer, 'inbound', ext)
-      fileName = req.file.originalname
-      fileSizeBytes = req.file.size
-    }
-
-    let item = await prisma.inboundItem.create({
-      data: {
-        tenantId: req.user.tenantId,
-        fileKey,
-        fileName,
-        fileSizeBytes,
-        source: body.source || (req.file ? 'upload' : 'manual'),
-        ocrText: body.ocrText || null,
-        extractedName: body.extractedName || null,
-        documentType: body.documentType || null,
-        status: 'RECEIVED',
-      },
-    })
-    await logEvent(item.id, 'RECEIVED', `source=${item.source} file=${item.fileName}`, req.user.email)
-
-    item = await runPipeline(item, req.user.email)
-    const full = await prisma.inboundItem.findUnique({
-      where: { id: item.id },
-      include: { matchedMailbox: true, events: { orderBy: { createdAt: 'asc' } } },
+    const full = await createAndProcess({
+      tenantId: req.user.tenantId,
+      fileBuffer: req.file ? req.file.buffer : null,
+      originalName: req.file ? req.file.originalname : body.fileName,
+      source: body.source || (req.file ? 'upload' : 'manual'),
+      hints: { ocrText: body.ocrText, extractedName: body.extractedName, documentType: body.documentType },
+      actor: req.user.email,
     })
     res.status(201).json(full)
   } catch (e) {
@@ -501,6 +407,18 @@ router.delete('/items/:id', async (req, res) => {
   if (item.fileKey) await storage.deleteFile(item.fileKey)
   await prisma.inboundItem.delete({ where: { id: item.id } }) // events cascade
   res.json({ deleted: true })
+})
+
+// ─────────────────────────── SCAN-FOLDER INGEST KEY ──────────────────────────
+// The watcher agent authenticates with this per-tenant key (admin manages it).
+router.get('/ingest-key', requireAdmin, async (req, res) => {
+  const t = await prisma.tenant.findUnique({ where: { id: req.user.tenantId }, select: { ingestKey: true } })
+  res.json({ ingestKey: t?.ingestKey || null })
+})
+router.post('/ingest-key/regenerate', requireAdmin, async (req, res) => {
+  const key = 'miqk_' + require('crypto').randomBytes(24).toString('base64url')
+  await prisma.tenant.update({ where: { id: req.user.tenantId }, data: { ingestKey: key } })
+  res.json({ ingestKey: key })
 })
 
 // ───────────────────────────────── STATS ─────────────────────────────────────

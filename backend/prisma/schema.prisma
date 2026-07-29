@@ -28,6 +28,8 @@ model Tenant {
   suspendedAt   DateTime?
   suspendReason String?
 
+  ingestKey     String?      @unique   // scan-folder watcher agent auth
+
   addressZoneX      Float @default(20)
   addressZoneY      Float @default(49)
   addressZoneWidth  Float @default(85)

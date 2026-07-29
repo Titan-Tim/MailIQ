@@ -14,6 +14,7 @@ const returnRouter    = require('./routes/returns')
 const inboundRouter   = require('./routes/inbound')
 const usersRouter     = require('./routes/users')
 const teamsRouter     = require('./routes/teams')
+const ingestRouter    = require('./routes/ingest')
 
 const app = express()
 
@@ -38,6 +39,7 @@ app.use('/api/returns',    returnRouter)
 app.use('/api/inbound',    inboundRouter)
 app.use('/api/users',      usersRouter)
 app.use('/api/teams',      teamsRouter)
+app.use('/api/ingest',     ingestRouter)
 
 // Public tracking route (no auth — recipient-facing)
 app.use('/api/track', trackRouter)
