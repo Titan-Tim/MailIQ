@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
   Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
-  Download, Upload, ClipboardList, Route, AtSign, FolderInput
+  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2
 } from 'lucide-react'
 
 // The app is split into two modules the user switches between. Outbound = the
@@ -45,6 +45,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
 }
 
 const ACCOUNT_ITEMS = [
+  { href: '/dashboard/platform', label: 'Platform',        icon: Building2, platformAdminOnly: true },
   { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
   { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
 ]
@@ -108,8 +109,9 @@ function Sidebar() {
     </Link>
   )
 
-  const accountItems = ACCOUNT_ITEMS.filter(
-    (it: any) => !it.superAdminOnly || user?.role === 'SUPER_ADMIN'
+  const accountItems = ACCOUNT_ITEMS.filter((it: any) =>
+    (!it.superAdminOnly || user?.role === 'SUPER_ADMIN') &&
+    (!it.platformAdminOnly || user?.isPlatformAdmin)
   )
 
   return (

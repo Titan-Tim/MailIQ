@@ -29,6 +29,7 @@ model Tenant {
   suspendReason String?
 
   ingestKey     String?      @unique   // scan-folder watcher agent auth
+  licenceExpiresAt DateTime?            // annual licence; access blocked once past
 
   addressZoneX      Float @default(20)
   addressZoneY      Float @default(49)
@@ -68,6 +69,7 @@ model User {
   role               UserRole @default(OPERATOR)
   mustChangePassword Boolean  @default(false)
   isActive           Boolean  @default(true)
+  isPlatformAdmin    Boolean  @default(false)  // provider-level: manage all tenancies
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface Tenant { id: string; name: string; slug: string; brandColor: string; plan: string }
-interface User   { id: string; email: string; name: string; role: string; mustChangePassword?: boolean; tenant: Tenant }
+interface User   { id: string; email: string; name: string; role: string; mustChangePassword?: boolean; isPlatformAdmin?: boolean; tenant: Tenant }
 
 interface AuthCtx {
   user: User | null

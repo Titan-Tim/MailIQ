@@ -3,7 +3,7 @@ const bcrypt  = require('bcryptjs')
 const jwt     = require('jsonwebtoken')
 const crypto  = require('crypto')
 const prisma  = require('../db')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, isPlatformAdmin } = require('../middleware/auth')
 const { sendPasswordResetEmail } = require('../services/email')
 
 function generateTempPassword() {
@@ -51,11 +51,14 @@ router.post('/login', async (req, res) => {
     return res.status(403).json({ error: 'This account has been deactivated. Contact your administrator.' })
   }
 
-  if (user.tenant.status === 'SUSPENDED') {
-    return res.status(403).json({
-      error: 'Account suspended',
-      reason: user.tenant.suspendReason || 'Please contact support.'
-    })
+  // The provider (platform admin) is exempt from tenant suspension / licence gates.
+  if (!isPlatformAdmin(user)) {
+    if (user.tenant.status === 'SUSPENDED') {
+      return res.status(403).json({ error: 'Account suspended', reason: user.tenant.suspendReason || 'Please contact support.' })
+    }
+    if (user.tenant.licenceExpiresAt && new Date() > user.tenant.licenceExpiresAt) {
+      return res.status(403).json({ error: 'Licence expired', reason: 'Your Mail-IQ licence has expired. Please contact your provider.' })
+    }
   }
 
   const { access, refresh } = signTokens(user.id)
@@ -68,6 +71,7 @@ router.post('/login', async (req, res) => {
       name:  user.name,
       role:  user.role,
       mustChangePassword: user.mustChangePassword,
+      isPlatformAdmin: isPlatformAdmin(user),
       tenant: {
         id:         user.tenant.id,
         name:       user.tenant.name,
