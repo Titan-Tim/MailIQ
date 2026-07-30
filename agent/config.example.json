@@ -1,0 +1,6 @@
+{
+  "apiUrl": "https://mailiq-production.up.railway.app",
+  "ingestKey": "miqk_paste-your-ingest-key-from-the-portal-here",
+  "hotFolder": "C:\\Mailroom Hot Folder",
+  "scale": 2
+}

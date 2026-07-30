@@ -62,26 +62,51 @@ function guessAddressee(text = '') {
  * and (b) the file name. This lets the whole inbound pipeline and demo run
  * end-to-end with zero cloud cost. Replace with a real driver later.
  */
+// mupdf is ESM-with-top-level-await — load it lazily via dynamic import and cache.
+let _mupdf = null
+async function getMupdf() { if (!_mupdf) _mupdf = await import('mupdf'); return _mupdf }
+
+const looksLikePdf = (buf) => Buffer.isBuffer(buf) && buf.slice(0, 5).toString('latin1') === '%PDF-'
+
+// Read the embedded text layer of a digital PDF (no OCR needed for text-based PDFs;
+// genuinely scanned/image-only PDFs return '' and fall back to the file name / hints).
+async function extractPdfText(buffer) {
+  try {
+    const mupdf = await getMupdf()
+    const doc = mupdf.Document.openDocument(new Uint8Array(buffer), 'application/pdf')
+    const n = Math.min(doc.countPages(), 5)
+    let t = ''
+    for (let i = 0; i < n; i++) t += doc.loadPage(i).toStructuredText('preserve-whitespace').asText() + '\n'
+    return t.trim()
+  } catch { return '' }
+}
+
 async function extractStub({ buffer, fileName = '', hints = {} }) {
   const nameHint = (fileName || '').replace(/[._-]+/g, ' ')
-  const text = hints.ocrText || `${nameHint}\n[stub OCR — no engine configured]`
 
-  const documentType =
-    hints.documentType ||
-    (classify(`${hints.ocrText || ''} ${nameHint}`).type)
+  // Prefer supplied text, else the PDF's own text layer, else just the file name.
+  let bodyText = hints.ocrText || ''
+  let readText = false
+  if (!bodyText && looksLikePdf(buffer)) {
+    bodyText = await extractPdfText(buffer)
+    readText = bodyText.length > 40
+  }
 
-  const extractedName = hints.extractedName || guessAddressee(hints.ocrText || nameHint)
+  const basis = bodyText || nameHint
+  const documentType = hints.documentType || classify(basis).type
+  const extractedName = hints.extractedName || guessAddressee(bodyText || nameHint)
+  const text = bodyText || `${nameHint}\n[stub OCR — no text layer; needs real OCR]`
 
-  // Confidence: high when a human/agent supplied structured hints, lower when we
-  // only had the filename to go on. A real engine would return its own score.
-  let confidence = 0.35
-  if (hints.ocrText) confidence += 0.35
-  if (hints.extractedName) confidence += 0.15
-  if (hints.documentType) confidence += 0.15
+  // Confidence: reading a real text layer is high-trust; filename-only is low.
+  let confidence = 0.3
+  if (readText) confidence = 0.8
+  else if (hints.ocrText) confidence = 0.7
+  if (hints.extractedName) confidence += 0.1
+  if (hints.documentType) confidence += 0.1
   if (documentType !== 'general') confidence += 0.05
   confidence = Math.min(1, Number(confidence.toFixed(2)))
 
-  return { text, extractedName, documentType, confidence, engine: 'stub' }
+  return { text, extractedName, documentType, confidence, engine: readText ? 'text-layer' : 'stub' }
 }
 
 // Placeholder drivers — throw until configured, so the swap is explicit.
