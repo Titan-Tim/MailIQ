@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
   Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
-  Download, Upload, ClipboardList, Route, AtSign
+  Download, Upload, ClipboardList, Route, AtSign, FolderInput
 } from 'lucide-react'
 
 // The app is split into two modules the user switches between. Outbound = the
@@ -39,6 +39,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
       { href: '/dashboard/inbound/triage', label: 'Triage Queue',  icon: ClipboardList },
       { href: '/dashboard/mailboxes',      label: 'Mailboxes',     icon: AtSign },
       { href: '/dashboard/inbound-rules',  label: 'Routing Rules', icon: Route },
+      { href: '/dashboard/inbound/scan-setup', label: 'Scan Folder', icon: FolderInput, superAdminOnly: true },
     ],
   },
 }
@@ -142,7 +143,9 @@ function Sidebar() {
 
       {/* Active module's tabs */}
       <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
-        {MODULES[module].items.map((item) => <NavLink key={item.href} {...item} />)}
+        {MODULES[module].items
+          .filter((it: any) => !it.superAdminOnly || user?.role === 'SUPER_ADMIN')
+          .map((item) => <NavLink key={item.href} {...item} />)}
       </nav>
 
       {/* Account — pinned, shown in both modules */}

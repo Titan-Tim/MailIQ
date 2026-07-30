@@ -70,6 +70,11 @@ export function inboundFileUrl(itemId: string) {
   return `${API}/api/inbound/items/${itemId}/file${token ? `?auth=${token}` : ''}`
 }
 
+export function separatorSheetUrl() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : ''
+  return `${API}/api/inbound/separator-sheet${token ? `?auth=${token}` : ''}`
+}
+
 export async function forgotPassword(email: string) {
   const res = await fetch(`${API}/api/auth/forgot-password`, {
     method: 'POST',

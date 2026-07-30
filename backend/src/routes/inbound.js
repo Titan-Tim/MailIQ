@@ -421,6 +421,15 @@ router.post('/ingest-key/regenerate', requireAdmin, async (req, res) => {
   res.json({ ingestKey: key })
 })
 
+// Serve the QR separator sheet (token via header or ?auth= query for the download link).
+router.get('/separator-sheet', requireManage, async (req, res) => {
+  const { generateSeparatorSheet } = require('../services/separator-sheet')
+  const bytes = await generateSeparatorSheet()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', 'inline; filename="mailiq-separator-sheet.pdf"')
+  res.send(Buffer.from(bytes))
+})
+
 // ───────────────────────────────── STATS ─────────────────────────────────────
 // Counts are scoped to what the caller may see (respects the privacy model).
 router.get('/stats', async (req, res) => {
