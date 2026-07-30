@@ -6,6 +6,17 @@ import { Building2, Plus, Loader2, Power, PowerOff, CalendarPlus, ShieldAlert, C
 
 const empty = { name: '', adminName: '', adminEmail: '', licenceMonths: 12 }
 
+// Preset, customer-appropriate suspension reasons (shown on the tenant's login).
+// No free-text entry — prevents anything unprofessional reaching the customer.
+const SUSPEND_REASONS = [
+  { value: '', label: 'No specific reason (generic message)' },
+  { value: 'Paused pending payment of an outstanding invoice.', label: 'Outstanding payment' },
+  { value: 'Paused pending contract renewal.', label: 'Contract renewal' },
+  { value: 'Paused at your organisation’s request.', label: 'At customer’s request' },
+  { value: 'Temporarily paused for scheduled maintenance.', label: 'Scheduled maintenance' },
+  { value: 'Your account is under review.', label: 'Account under review' },
+]
+
 function licenceState(iso: string | null) {
   if (!iso) return { label: 'no licence', cls: 'bg-gray-100 text-gray-500' }
   const d = new Date(iso), now = new Date()
@@ -24,6 +35,8 @@ export default function PlatformPage() {
   const [error, setError] = useState('')
   const [result, setResult] = useState<any>(null)
   const [copied, setCopied] = useState(false)
+  const [suspendTarget, setSuspendTarget] = useState<any>(null)
+  const [suspendReason, setSuspendReason] = useState('')
 
   async function load() {
     const d = await apiFetch('/api/platform/tenants')
@@ -52,9 +65,13 @@ export default function PlatformPage() {
       setResult(r); setForm(empty); await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
-  async function setActive(id: string, on: boolean) {
-    const reason = on ? undefined : (prompt('Reason for switching off (optional):') || undefined)
-    await apiFetch(`/api/platform/tenants/${id}/${on ? 'activate' : 'suspend'}`, { method: 'POST', body: JSON.stringify({ reason }) })
+  async function activate(id: string) {
+    await apiFetch(`/api/platform/tenants/${id}/activate`, { method: 'POST' })
+    await load()
+  }
+  async function confirmSuspend() {
+    await apiFetch(`/api/platform/tenants/${suspendTarget.id}/suspend`, { method: 'POST', body: JSON.stringify({ reason: suspendReason || undefined }) })
+    setSuspendTarget(null)
     await load()
   }
   async function extend(id: string) {
@@ -107,8 +124,8 @@ export default function PlatformPage() {
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${lic.cls}`}>{lic.label}</span>
                       <button onClick={() => extend(t.id)} title="Extend licence 12 months" className="text-gray-400 hover:text-violet-700 p-1"><CalendarPlus size={16} /></button>
                       {suspended
-                        ? <button onClick={() => setActive(t.id, true)} title="Switch on" className="text-gray-400 hover:text-emerald-600 p-1"><Power size={16} /></button>
-                        : <button onClick={() => setActive(t.id, false)} title="Switch off" className="text-gray-400 hover:text-red-600 p-1"><PowerOff size={16} /></button>}
+                        ? <button onClick={() => activate(t.id)} title="Switch on" className="text-gray-400 hover:text-emerald-600 p-1"><Power size={16} /></button>
+                        : <button onClick={() => { setSuspendTarget(t); setSuspendReason('') }} title="Switch off" className="text-gray-400 hover:text-red-600 p-1"><PowerOff size={16} /></button>}
                     </div>
                   </div>
                 )
@@ -140,6 +157,27 @@ export default function PlatformPage() {
           </div>
         </div>
       </div>
+
+      {/* Suspend modal — preset reasons only */}
+      {suspendTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSuspendTarget(null)}>
+          <div className="bg-white rounded-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-800 mb-1">Switch off {suspendTarget.name}?</h3>
+            <p className="text-xs text-gray-500 mb-4">Their users won&rsquo;t be able to log in. Choose the message shown on their login screen.</p>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Reason (shown to the customer)</label>
+            <select value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:border-violet-500">
+              {SUSPEND_REASONS.map((r) => <option key={r.label} value={r.value}>{r.label}</option>)}
+            </select>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setSuspendTarget(null)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+              <button onClick={confirmSuspend} className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+                <PowerOff size={15} /> Switch off
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
