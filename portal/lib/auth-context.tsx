@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Login failed')
+    if (!res.ok) { const e: any = new Error(data.error || 'Login failed'); e.reason = data.reason; throw e }
     localStorage.setItem('accessToken',  data.accessToken)
     localStorage.setItem('refreshToken', data.refreshToken)
     localStorage.setItem('mailiq_user',  JSON.stringify(data.user))

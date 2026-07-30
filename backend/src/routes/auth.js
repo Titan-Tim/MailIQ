@@ -54,10 +54,10 @@ router.post('/login', async (req, res) => {
   // The provider (platform admin) is exempt from tenant suspension / licence gates.
   if (!isPlatformAdmin(user)) {
     if (user.tenant.status === 'SUSPENDED') {
-      return res.status(403).json({ error: 'Account suspended', reason: user.tenant.suspendReason || 'Please contact support.' })
+      return res.status(403).json({ error: 'Account suspended', reason: user.tenant.suspendReason || 'Your organisation’s Mail-IQ access is currently paused.' })
     }
     if (user.tenant.licenceExpiresAt && new Date() > user.tenant.licenceExpiresAt) {
-      return res.status(403).json({ error: 'Licence expired', reason: 'Your Mail-IQ licence has expired. Please contact your provider.' })
+      return res.status(403).json({ error: 'Licence expired', reason: 'Your Mail-IQ licence has expired.' })
     }
   }
 

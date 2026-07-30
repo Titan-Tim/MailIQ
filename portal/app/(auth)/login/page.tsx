@@ -12,17 +12,23 @@ function LoginForm() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
+  const [reason, setReason]     = useState('')
   const [loading, setLoading]   = useState(false)
+
+  const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sol-iq.co.uk'
+  // Account-status errors deserve a calmer, more helpful message than a bad password.
+  const isStatusError = /suspend|licence|license|deactivat/i.test(error)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setError(''); setReason('')
     try {
       await login(email, password)
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message)
+      setReason(err.reason || '')
     } finally {
       setLoading(false)
     }
@@ -74,9 +80,21 @@ function LoginForm() {
               </Link>
             </div>
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
+              isStatusError ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <p className="text-amber-800 text-sm font-medium">{error}</p>
+                  <p className="text-amber-700 text-sm mt-1">
+                    {reason || 'This account isn’t currently active.'}
+                  </p>
+                  <p className="text-amber-700 text-xs mt-2">
+                    Need help? Contact <a href={`mailto:${SUPPORT}`} className="font-medium underline">{SUPPORT}</a>.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )
             )}
             <button
               type="submit" disabled={loading}
