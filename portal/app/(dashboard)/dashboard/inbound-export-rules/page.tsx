@@ -110,7 +110,8 @@ export default function FilingRulesPage() {
             <div>
               <label className="text-xs font-medium text-gray-600">Saved filename</label>
               <input className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-violet-500" value={form.filenameTemplate} onChange={(e) => setForm({ ...form, filenameTemplate: e.target.value })} />
-              <p className="text-[11px] text-gray-400 mt-1">Tokens: <code>{'{ref}'}</code> <code>{'{date}'}</code> <code>{'{type}'}</code>. <code>/</code> in a ref becomes <code>-</code>.</p>
+              <p className="text-[11px] text-gray-400 mt-1">Tokens: <code>{'{ref}'}</code> <code>{'{date}'}</code> <code>{'{type}'}</code> <code>{'{vendor}'}</code> <code>{'{invoiceNo}'}</code>. <code>/</code> and spaces become <code>-</code>.</p>
+              <p className="text-[11px] text-gray-400 mt-1">For invoices, leave the format blank and use e.g. <code>{'{vendor}_{invoiceNo}_Invoice.pdf'}</code> — the vendor &amp; invoice number are read from the document.</p>
             </div>
             <div className="flex gap-2">
               <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Target (e.g. proclaim)" value={form.exportTarget} onChange={(e) => setForm({ ...form, exportTarget: e.target.value })} />
