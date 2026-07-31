@@ -25,7 +25,10 @@ function LoginForm() {
     setError(''); setReason('')
     try {
       await login(email, password)
-      router.push('/dashboard')
+      // Open the module the user prefers (saved on this device). Defaults to Inbound.
+      let home = '/dashboard/inbound'
+      try { if (localStorage.getItem('mailiq_default_module') === 'outbound') home = '/dashboard' } catch {}
+      router.push(home)
     } catch (err: any) {
       setError(err.message)
       setReason(err.reason || '')

@@ -1,17 +1,33 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, SlidersHorizontal, Download, Upload, Check } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user, setUser } = useAuth()
+  const [defaultModule, setDefaultModule] = useState<'inbound' | 'outbound'>('inbound')
+  const [prefSaved, setPrefSaved] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword]         = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    try { if (localStorage.getItem('mailiq_default_module') === 'outbound') setDefaultModule('outbound') } catch {}
+  }, [])
+
+  function saveDefaultModule(m: 'inbound' | 'outbound') {
+    setDefaultModule(m)
+    try {
+      localStorage.setItem('mailiq_default_module', m)
+      localStorage.setItem('mailiq_module', m) // keep the sidebar in step
+    } catch {}
+    setPrefSaved(true)
+    setTimeout(() => setPrefSaved(false), 2500)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,9 +63,39 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-md mx-auto py-10 px-4">
+      <h1 className="text-xl font-semibold text-gray-900 mb-6">Settings</h1>
+
+      {/* Preferences */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <SlidersHorizontal size={18} className="text-violet-700" />
+          <h2 className="font-semibold text-gray-900">Preferences</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Which module opens when you sign in.</p>
+        <div className="flex gap-2">
+          {(['inbound', 'outbound'] as const).map((m) => {
+            const on = defaultModule === m
+            const Icon = m === 'inbound' ? Download : Upload
+            return (
+              <button key={m} onClick={() => saveDefaultModule(m)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                  on ? 'bg-violet-700 text-white border-violet-700' : 'bg-white text-gray-700 border-gray-200 hover:border-violet-300'
+                }`}>
+                <Icon size={15} /> {m === 'inbound' ? 'Inbound' : 'Outbound'}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2">
+          {prefSaved
+            ? <span className="text-emerald-600 inline-flex items-center gap-1"><Check size={12} /> Saved — opens the {defaultModule} module next time.</span>
+            : 'Saved on this device.'}
+        </p>
+      </div>
+
       <div className="flex items-center gap-2 mb-6">
         <KeyRound size={20} className="text-violet-700" />
-        <h1 className="text-xl font-semibold text-gray-900">Change Password</h1>
+        <h2 className="text-lg font-semibold text-gray-900">Change Password</h2>
       </div>
 
       {user?.mustChangePassword && (

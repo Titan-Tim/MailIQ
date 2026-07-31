@@ -48,7 +48,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
 const ACCOUNT_ITEMS = [
   { href: '/dashboard/platform', label: 'Platform',        icon: Building2, platformAdminOnly: true },
   { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
-  { href: '/dashboard/settings', label: 'Change Password', icon: KeyRound },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
 // Which module a given path belongs to. Account pages (team/settings) belong to
