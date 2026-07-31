@@ -30,6 +30,7 @@ model Tenant {
 
   ingestKey     String?      @unique   // scan-folder watcher agent auth
   licenceExpiresAt DateTime?            // annual licence; access blocked once past
+  enabledModules String[]   @default(["inbound", "outbound"])  // licensed modules; gates in/outbound
 
   addressZoneX      Float @default(20)
   addressZoneY      Float @default(49)

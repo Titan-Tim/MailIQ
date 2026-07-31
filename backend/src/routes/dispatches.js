@@ -5,7 +5,7 @@ const prisma   = require('../db')
 const storage  = require('../services/storage')
 const composer = require('../services/composer')
 const { sendDispatchEmail } = require('../services/email')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 // ── Multer: parse PDF uploads into memory ─────────────────────────────────
 const upload = multer({
@@ -18,6 +18,7 @@ const upload = multer({
 })
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 

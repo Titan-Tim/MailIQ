@@ -1,8 +1,9 @@
 const router = require('express').Router()
 const prisma = require('../db')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // GET /api/rules
 router.get('/', async (req, res) => {

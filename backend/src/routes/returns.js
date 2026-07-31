@@ -1,8 +1,9 @@
 const router = require('express').Router()
 const prisma = require('../db')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // POST /api/returns/scan  — operator scans the barcode on a returned letter
 router.post('/scan', async (req, res) => {

@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-interface Tenant { id: string; name: string; slug: string; brandColor: string; plan: string }
+interface Tenant { id: string; name: string; slug: string; brandColor: string; plan: string; modules?: string[]; licenceExpiresAt?: string | null }
 interface User   { id: string; email: string; name: string; role: string; mustChangePassword?: boolean; isPlatformAdmin?: boolean; tenant: Tenant }
 
 interface AuthCtx {

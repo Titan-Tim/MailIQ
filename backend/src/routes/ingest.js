@@ -8,6 +8,7 @@ const router = require('express').Router()
 const multer = require('multer')
 const prisma = require('../db')
 const { createAndProcess } = require('../services/inbound-pipeline')
+const { getLicence } = require('../services/licence')
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
 
@@ -17,6 +18,8 @@ async function requireIngestKey(req, res, next) {
   const tenant = await prisma.tenant.findFirst({ where: { ingestKey: String(key) } })
   if (!tenant) return res.status(401).json({ error: 'Invalid ingest key' })
   if (tenant.status === 'SUSPENDED') return res.status(403).json({ error: 'Account suspended' })
+  if (tenant.licenceExpiresAt && new Date() > tenant.licenceExpiresAt) return res.status(403).json({ error: 'Licence expired' })
+  if (!getLicence(tenant).hasModule('inbound')) return res.status(403).json({ error: 'The inbound module is not included in your licence', code: 'MODULE_NOT_LICENSED' })
   req.tenant = tenant
   next()
 }

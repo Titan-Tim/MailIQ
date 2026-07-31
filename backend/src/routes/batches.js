@@ -3,9 +3,10 @@ const path     = require('path')
 const prisma   = require('../db')
 const storage  = require('../services/storage')
 const composer = require('../services/composer')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // GET /api/batches
 router.get('/', async (req, res) => {

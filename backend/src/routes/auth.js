@@ -4,6 +4,7 @@ const jwt     = require('jsonwebtoken')
 const crypto  = require('crypto')
 const prisma  = require('../db')
 const { requireAuth, isPlatformAdmin } = require('../middleware/auth')
+const { getLicence } = require('../services/licence')
 const { sendPasswordResetEmail } = require('../services/email')
 
 function generateTempPassword() {
@@ -79,6 +80,8 @@ router.post('/login', async (req, res) => {
         logoUrl:    user.tenant.logoUrl,
         brandColor: user.tenant.brandColor,
         plan:       user.tenant.plan,
+        modules:    getLicence(user.tenant).modules,
+        licenceExpiresAt: user.tenant.licenceExpiresAt,
       }
     }
   })

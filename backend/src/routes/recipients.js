@@ -2,11 +2,12 @@ const router = require('express').Router()
 const multer = require('multer')
 const { parse } = require('csv-parse/sync')
 const prisma = require('../db')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // GET /api/recipients?search=&limit=&offset=
 router.get('/', async (req, res) => {

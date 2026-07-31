@@ -11,7 +11,7 @@
 const router = require('express').Router()
 const multer = require('multer')
 const prisma = require('../db')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 const ocr = require('../services/ocr')
 const { decideRoute, deliverToMailbox } = require('../services/inbound-router')
 const storage = require('../services/storage')
@@ -31,6 +31,7 @@ function requireAdmin(req, res, next) {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
 
 router.use(requireAuth)
+router.use(requireModule('inbound'))
 
 // ─────────────────────────────── MAILBOXES ───────────────────────────────────
 router.get('/mailboxes', requireManage, async (req, res) => {

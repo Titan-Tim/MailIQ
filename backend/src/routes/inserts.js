@@ -2,7 +2,7 @@ const router  = require('express').Router()
 const multer  = require('multer')
 const prisma  = require('../db')
 const storage = require('../services/storage')
-const { requireAuth } = require('../middleware/auth')
+const { requireAuth, requireModule } = require('../middleware/auth')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -14,6 +14,7 @@ const upload = multer({
 })
 
 router.use(requireAuth)
+router.use(requireModule('outbound'))
 
 // GET /api/inserts
 router.get('/', async (req, res) => {

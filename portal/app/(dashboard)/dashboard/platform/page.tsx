@@ -4,7 +4,8 @@ import { apiFetch } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { Building2, Plus, Loader2, Power, PowerOff, CalendarPlus, ShieldAlert, Copy, Check } from 'lucide-react'
 
-const empty = { name: '', adminName: '', adminEmail: '', licenceMonths: 12 }
+const empty = { name: '', adminName: '', adminEmail: '', licenceMonths: 12, enabledModules: ['inbound', 'outbound'] as string[] }
+const ALL_MODULES = ['inbound', 'outbound'] as const
 
 // Preset, customer-appropriate suspension reasons (shown on the tenant's login).
 // No free-text entry — prevents anything unprofessional reaching the customer.
@@ -78,6 +79,12 @@ export default function PlatformPage() {
     await apiFetch(`/api/platform/tenants/${id}/licence`, { method: 'PUT', body: JSON.stringify({ extendMonths: 12 }) })
     await load()
   }
+  async function toggleModule(t: any, mod: string) {
+    const cur = new Set<string>(t.enabledModules?.length ? t.enabledModules : ['inbound', 'outbound'])
+    cur.has(mod) ? cur.delete(mod) : cur.add(mod)
+    await apiFetch(`/api/platform/tenants/${t.id}/modules`, { method: 'PUT', body: JSON.stringify({ enabledModules: Array.from(cur) }) })
+    await load()
+  }
 
   return (
     <div className="p-6">
@@ -120,6 +127,19 @@ export default function PlatformPage() {
                           {suspended && <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-1.5 py-0.5 rounded-full">SUSPENDED</span>}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">/{t.slug} · {t.users || 0} user{t.users === 1 ? '' : 's'} · {t.inboundItems || 0} inbound</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[10px] text-gray-400">modules:</span>
+                          {ALL_MODULES.map((m) => {
+                            const on = (t.enabledModules?.length ? t.enabledModules : ['inbound', 'outbound']).includes(m)
+                            return (
+                              <button key={m} onClick={() => toggleModule(t, m)}
+                                title={on ? `Licensed — click to remove ${m}` : `Not licensed — click to enable ${m}`}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize transition-colors ${on ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 line-through'}`}>
+                                {m}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${lic.cls}`}>{lic.label}</span>
                       <button onClick={() => extend(t.id)} title="Extend licence 12 months" className="text-gray-400 hover:text-violet-700 p-1"><CalendarPlus size={16} /></button>
@@ -141,6 +161,18 @@ export default function PlatformPage() {
             <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Organisation name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Admin email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} />
             <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Admin name (optional)" value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} />
+            <div>
+              <span className="block text-xs text-gray-500 mb-1">Licensed modules</span>
+              <div className="flex gap-4">
+                {ALL_MODULES.map((m) => (
+                  <label key={m} className="flex items-center gap-1.5 text-sm text-gray-700 capitalize cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 accent-violet-600" checked={form.enabledModules.includes(m)}
+                      onChange={() => { const cur = new Set(form.enabledModules); cur.has(m) ? cur.delete(m) : cur.add(m); setForm({ ...form, enabledModules: Array.from(cur) }) }} />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </div>
             <label className="block text-xs text-gray-500">Licence length
               <select className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" value={form.licenceMonths} onChange={(e) => setForm({ ...form, licenceMonths: +e.target.value })}>
                 <option value={12}>12 months</option>

@@ -10,6 +10,14 @@ const prisma = require('../db')
 const { requireAuth, requirePlatformAdmin } = require('../middleware/auth')
 const { sendInviteEmail } = require('../services/email')
 const { ensurePersonalMailbox } = require('../services/inbound-access')
+const { MODULES, DEFAULT_MODULES } = require('../services/licence')
+
+// Validate/normalise a requested module list; falls back to both if empty/invalid.
+function cleanModules(input) {
+  if (!Array.isArray(input)) return null
+  const m = input.filter((x) => MODULES.includes(x))
+  return m.length ? Array.from(new Set(m)) : DEFAULT_MODULES
+}
 
 router.use(requireAuth, requirePlatformAdmin)
 
@@ -25,6 +33,7 @@ const slugify = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').repla
 const shape = (t) => ({
   id: t.id, name: t.name, slug: t.slug, status: t.status, plan: t.plan,
   licenceExpiresAt: t.licenceExpiresAt, suspendReason: t.suspendReason, createdAt: t.createdAt,
+  enabledModules: t.enabledModules,
   users: t._count?.users, inboundItems: t._count?.inboundItems,
 })
 
@@ -39,7 +48,7 @@ router.get('/tenants', async (req, res) => {
 
 // POST /api/platform/tenants — provision a clean tenant + its first admin
 router.post('/tenants', async (req, res) => {
-  const { name, adminEmail, adminName, slug: slugIn, licenceMonths } = req.body
+  const { name, adminEmail, adminName, slug: slugIn, licenceMonths, enabledModules } = req.body
   if (!name?.trim() || !adminEmail?.trim()) return res.status(400).json({ error: 'name and adminEmail are required' })
   const cleanEmail = adminEmail.toLowerCase().trim()
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) return res.status(400).json({ error: 'Invalid admin email' })
@@ -51,7 +60,8 @@ router.post('/tenants', async (req, res) => {
   const months = Number(licenceMonths) > 0 ? Number(licenceMonths) : 12
   const expiry = new Date(); expiry.setMonth(expiry.getMonth() + months)
 
-  const tenant = await prisma.tenant.create({ data: { name: name.trim(), slug, licenceExpiresAt: expiry } })
+  const modules = cleanModules(enabledModules) || DEFAULT_MODULES
+  const tenant = await prisma.tenant.create({ data: { name: name.trim(), slug, licenceExpiresAt: expiry, enabledModules: modules } })
   const tp = tempPassword()
   const admin = await prisma.user.create({
     data: {
@@ -105,6 +115,18 @@ router.put('/tenants/:id/licence', async (req, res) => {
   const t = await prisma.tenant.update({
     where: { id: req.params.id },
     data: { licenceExpiresAt },
+    include: { _count: { select: { users: true, inboundItems: true } } },
+  })
+  res.json(shape(t))
+})
+
+// PUT /api/platform/tenants/:id/modules — set which modules the tenant is licensed for
+router.put('/tenants/:id/modules', async (req, res) => {
+  const modules = cleanModules(req.body?.enabledModules)
+  if (!modules) return res.status(400).json({ error: 'enabledModules must be an array of: ' + MODULES.join(', ') })
+  const t = await prisma.tenant.update({
+    where: { id: req.params.id },
+    data: { enabledModules: modules },
     include: { _count: { select: { users: true, inboundItems: true } } },
   })
   res.json(shape(t))

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken')
 const prisma = require('../db')
+const { getLicence } = require('../services/licence')
 
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization
@@ -59,4 +60,18 @@ function requireRole(...roles) {
   }
 }
 
-module.exports = { requireAuth, requireRole, requirePlatformAdmin, isPlatformAdmin }
+// Gate a whole module (inbound/outbound) behind the tenant's licence. Runs after
+// requireAuth. Platform admin (the provider) is exempt.
+function requireModule(mod) {
+  return (req, res, next) => {
+    if (req.isPlatformAdmin) return next()
+    if (getLicence(req.user?.tenant).hasModule(mod)) return next()
+    return res.status(403).json({
+      error: `The ${mod} module is not included in your licence`,
+      code: 'MODULE_NOT_LICENSED',
+      module: mod,
+    })
+  }
+}
+
+module.exports = { requireAuth, requireRole, requirePlatformAdmin, isPlatformAdmin, requireModule }
