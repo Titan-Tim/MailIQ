@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/api'
-import { FolderOutput, Plus, Trash2, Loader2, ArrowRight } from 'lucide-react'
+import { FolderOutput, Plus, Trash2, Loader2, ArrowRight, Pencil, X } from 'lucide-react'
 
 const DOC_TYPES = ['', 'invoice', 'statement', 'legal', 'hr', 'general']
 const empty = { name: '', matchKeyword: '', matchDocumentType: '', format: '', filenameTemplate: '{ref}.pdf', exportTarget: 'default', priority: 0 }
@@ -10,6 +10,7 @@ export default function FilingRulesPage() {
   const [rules, setRules] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState<any>(empty)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -20,14 +21,28 @@ export default function FilingRulesPage() {
   }
   useEffect(() => { load() }, [])
 
-  async function add() {
+  function startEdit(r: any) {
+    setForm({
+      name: r.name, matchKeyword: r.matchKeyword || '', matchDocumentType: r.matchDocumentType || '',
+      format: r.format || '', filenameTemplate: r.filenameTemplate || '{ref}.pdf',
+      exportTarget: r.exportTarget || 'default', priority: r.priority || 0,
+    })
+    setEditingId(r.id); setError('')
+  }
+  function cancelEdit() { setForm(empty); setEditingId(null); setError('') }
+
+  async function save() {
     if (!form.name) { setError('Give the rule a name'); return }
     if (!form.format && !form.matchKeyword && !form.matchDocumentType) { setError('Add a case-number format, or a match keyword / document type'); return }
     setBusy(true); setError('')
-    try { await apiFetch('/api/inbound/export-rules', { method: 'POST', body: JSON.stringify(form) }); setForm(empty); await load() }
-    catch (e: any) { setError(e.message) } finally { setBusy(false) }
+    try {
+      if (editingId) await apiFetch(`/api/inbound/export-rules/${editingId}`, { method: 'PUT', body: JSON.stringify(form) })
+      else await apiFetch('/api/inbound/export-rules', { method: 'POST', body: JSON.stringify(form) })
+      cancelEdit(); await load()
+    } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   async function remove(id: string) {
+    if (editingId === id) cancelEdit()
     await apiFetch(`/api/inbound/export-rules/${id}`, { method: 'DELETE' })
     await load()
   }
@@ -51,7 +66,7 @@ export default function FilingRulesPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {rules.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 px-5 py-3">
+                <div key={r.id} className={`flex items-center gap-3 px-5 py-3 ${editingId === r.id ? 'bg-violet-50/60' : ''}`}>
                   <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-xs font-bold text-gray-500">{r.priority}</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 text-sm">{r.name}</p>
@@ -64,6 +79,7 @@ export default function FilingRulesPage() {
                       <span className="text-gray-400">→ {r.exportTarget}</span>
                     </p>
                   </div>
+                  <button onClick={() => startEdit(r)} className={`transition-colors ${editingId === r.id ? 'text-violet-700' : 'text-gray-300 hover:text-violet-700'}`} title="Edit rule"><Pencil size={14} /></button>
                   <button onClick={() => remove(r.id)} className="text-gray-300 hover:text-red-600 transition-colors" title="Delete rule"><Trash2 size={15} /></button>
                 </div>
               ))}
@@ -73,7 +89,10 @@ export default function FilingRulesPage() {
 
         {/* Add form */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 h-fit">
-          <h3 className="font-semibold text-gray-800 mb-4">Add filing rule</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">{editingId ? 'Edit filing rule' : 'Add filing rule'}</h3>
+            {editingId && <button onClick={cancelEdit} className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"><X size={12} /> Cancel</button>}
+          </div>
           <div className="space-y-3">
             <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Rule name (e.g. Hartwell → Proclaim)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <div>
@@ -98,8 +117,8 @@ export default function FilingRulesPage() {
               <input type="number" className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Priority" value={form.priority} onChange={(e) => setForm({ ...form, priority: +e.target.value })} />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button onClick={add} disabled={busy} className="w-full flex items-center justify-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg">
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Add filing rule
+            <button onClick={save} disabled={busy} className="w-full flex items-center justify-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg">
+              {busy ? <Loader2 size={15} className="animate-spin" /> : editingId ? <Pencil size={15} /> : <Plus size={15} />} {editingId ? 'Save changes' : 'Add filing rule'}
             </button>
             <p className="text-[11px] text-gray-400">The agent files matched documents into the folder mapped to this target (set the folder in the agent&rsquo;s setup / <code>exportFolder</code>).</p>
           </div>
