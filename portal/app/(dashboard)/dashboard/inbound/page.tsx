@@ -34,6 +34,8 @@ export default function InboundTrayPage() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showIntake, setShowIntake] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   async function load() {
     const [i, s] = await Promise.all([
@@ -42,14 +44,33 @@ export default function InboundTrayPage() {
     ])
     setItems(i.items)
     setStats(s)
+    setSelected(new Set())
     setLoading(false)
   }
   useEffect(() => { load() }, [])
+
+  function toggle(id: string) {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAll() {
+    setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.id))))
+  }
+  const allSelected = items.length > 0 && selected.size === items.length
+  const someSelected = selected.size > 0
 
   async function deleteItem(e: React.MouseEvent, id: string) {
     e.preventDefault(); e.stopPropagation()
     if (!confirm('Delete this item? The document and its history are removed permanently.')) return
     await apiFetch(`/api/inbound/items/${id}`, { method: 'DELETE' })
+    await load()
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} item${selected.size === 1 ? '' : 's'}? The documents and their history are removed permanently.`)) return
+    setBulkBusy(true)
+    try { await Promise.all(Array.from(selected).map((id) => apiFetch(`/api/inbound/items/${id}`, { method: 'DELETE' }))) }
+    finally { setBulkBusy(false) }
     await load()
   }
 
@@ -76,8 +97,21 @@ export default function InboundTrayPage() {
       )}
 
       <div className="bg-white rounded-xl border border-gray-200">
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+          {items.length > 0 && (
+            <input type="checkbox" aria-label="Select all"
+              checked={allSelected}
+              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+              onChange={toggleAll}
+              className="w-4 h-4 accent-violet-600 cursor-pointer" />
+          )}
           <h2 className="font-semibold text-gray-800">All inbound items</h2>
+          {someSelected && (
+            <button onClick={deleteSelected} disabled={bulkBusy}
+              className="ml-auto flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-60 transition-colors">
+              {bulkBusy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete selected ({selected.size})
+            </button>
+          )}
         </div>
         {loading ? (
           <p className="px-5 py-8 text-center text-gray-400 text-sm">Loading…</p>
@@ -88,28 +122,34 @@ export default function InboundTrayPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {items.map((it) => (
-              <Link key={it.id} href={`/dashboard/inbound/${it.id}`}
-                className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition-colors group">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">{it.fileName}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {it.documentType || 'general'}
-                    {it.extractedName && ` · to ${it.extractedName}`}
-                    {it.matchedMailbox && ` · → ${it.matchedMailbox.name}`}
-                  </p>
-                </div>
-                <span className="text-xs text-gray-400">{Math.round((it.confidence || 0) * 100)}%</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[it.status] || 'bg-gray-100 text-gray-600'}`}>
-                  {it.status}
-                </span>
-                <span className="text-xs text-gray-400 w-14 text-right">
-                  {new Date(it.receivedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                </span>
+              <div key={it.id}
+                className={`flex items-center gap-3 px-5 py-3 transition-colors ${selected.has(it.id) ? 'bg-violet-50/50' : 'hover:bg-gray-50'}`}>
+                <input type="checkbox" aria-label={`Select ${it.fileName}`}
+                  checked={selected.has(it.id)} onChange={() => toggle(it.id)}
+                  className="w-4 h-4 accent-violet-600 cursor-pointer shrink-0" />
+                <Link href={`/dashboard/inbound/${it.id}`}
+                  className="flex items-center gap-4 flex-1 min-w-0 group">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm truncate">{it.fileName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {it.documentType || 'general'}
+                      {it.extractedName && ` · to ${it.extractedName}`}
+                      {it.matchedMailbox && ` · → ${it.matchedMailbox.name}`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400">{Math.round((it.confidence || 0) * 100)}%</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[it.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {it.status}
+                  </span>
+                  <span className="text-xs text-gray-400 w-14 text-right">
+                    {new Date(it.receivedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </Link>
                 <button onClick={(e) => deleteItem(e, it.id)} title="Delete"
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors">
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors shrink-0">
                   <Trash2 size={15} />
                 </button>
-              </Link>
+              </div>
             ))}
           </div>
         )}
