@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
   Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
-  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2
+  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2, FolderOutput
 } from 'lucide-react'
 
 // The app is split into two modules the user switches between. Outbound = the
@@ -39,6 +39,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
       { href: '/dashboard/inbound/triage', label: 'Triage Queue',  icon: ClipboardList },
       { href: '/dashboard/mailboxes',      label: 'Mailboxes',     icon: AtSign },
       { href: '/dashboard/inbound-rules',  label: 'Routing Rules', icon: Route },
+      { href: '/dashboard/inbound-export-rules', label: 'Filing Rules', icon: FolderOutput },
       { href: '/dashboard/inbound/scan-setup', label: 'Scan Folder', icon: FolderInput, superAdminOnly: true },
     ],
   },

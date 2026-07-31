@@ -27,6 +27,8 @@ async function main() {
   console.log('\n────────────────────────────────────────')
   console.log('  Mail-IQ scan-folder agent — setup')
   console.log('────────────────────────────────────────')
+  console.log('\n  Tip: a value shown in [brackets] is the default —')
+  console.log('  just press Enter to accept it, or type to change it.')
 
   let cur = {}
   try { cur = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) } catch { /* first run */ }
@@ -36,6 +38,7 @@ async function main() {
   while (!ingestKey) { console.log('   The ingest key is required.'); ingestKey = await ask('   Ingest key', '') }
   const hotFolder = await ask('\n3. Hot folder  (where the scanner saves)', cur.hotFolder || 'C:\\Mailroom Hot Folder')
   const scale = Number(await ask('\n4. Render quality  (higher = sharper QR, a little slower)', String(cur.scale || 2.5))) || 2.5
+  const exportFolder = await ask('\n5. Filing folder  (optional — where case-number-named files are saved,\n   e.g. a Proclaim hot folder. Leave blank to skip.)', cur.exportFolder || '')
 
   process.stdout.write('\nTesting connection… ')
   try {
@@ -52,11 +55,15 @@ async function main() {
     rl.close(); process.exitCode = 1; return
   }
 
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify({ apiUrl, ingestKey, hotFolder, scale }, null, 2))
+  const config = { apiUrl, ingestKey, hotFolder, scale }
+  if (exportFolder) config.exportFolder = exportFolder
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2))
   try { fs.mkdirSync(hotFolder, { recursive: true }) } catch { /* may need creating manually */ }
+  if (exportFolder) { try { fs.mkdirSync(exportFolder, { recursive: true }) } catch { /* create manually */ } }
 
   console.log(`\n✓ Saved config to  ${CONFIG_PATH}`)
   console.log(`✓ Hot folder ready: ${hotFolder}`)
+  if (exportFolder) console.log(`✓ Filing folder ready: ${exportFolder}`)
   console.log('\nAll set. Start watching with:\n\n   npm start\n')
   rl.close()
 }

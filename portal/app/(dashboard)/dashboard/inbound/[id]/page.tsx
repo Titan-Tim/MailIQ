@@ -116,6 +116,7 @@ export default function InboundItemPage() {
               <Row k="Addressed to" v={item.extractedName || '—'} />
               <Row k="Routed to" v={item.matchedMailbox?.name || '—'} />
               <Row k="Delivered to" v={item.deliveredEmail || '—'} />
+              {item.exportFilename && <Row k="Filed as" v={`${item.exportFilename} (${item.exportTarget})`} />}
               <Row k="Reason" v={item.routingReason || '—'} />
             </dl>
           </div>

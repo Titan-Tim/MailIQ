@@ -70,6 +70,17 @@ async function processBatch(filePath) {
       const docName = docs.length > 1 ? name.replace(/\.pdf$/i, '') + `-doc${n}.pdf` : name
       const r = await uploadDoc(doc.buffer, docName)
       log(`  ✓ uploaded ${docName} → ${r.status}${r.mailbox ? ` (${r.documentType} → ${r.mailbox})` : ` (${r.documentType || 'unclassified'})`}`)
+
+      // Filing: if a case number was identified, write the document to the watch folder.
+      if (r.export && r.export.filename) {
+        if (cfg.exportFolder) {
+          fs.mkdirSync(cfg.exportFolder, { recursive: true })
+          fs.writeFileSync(path.join(cfg.exportFolder, r.export.filename), doc.buffer)
+          log(`    ↳ filed as ${r.export.filename} → ${cfg.exportFolder}`)
+        } else {
+          log(`    ↳ identified ${r.export.filename} but no exportFolder set — add one to config.json to file it`)
+        }
+      }
     }
     const dest = moveTo(cfg.processedFolder, filePath)
     log(`  done — moved to ${path.relative(cfg.hotFolder, dest)}`)

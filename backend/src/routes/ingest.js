@@ -44,6 +44,8 @@ router.post('/', requireIngestKey, upload.single('file'), async (req, res) => {
       documentType: item.documentType,
       mailbox: item.matchedMailbox?.name || null,
       routingReason: item.routingReason,
+      // If a case number was identified, tell the agent how to file it.
+      export: item.exportFilename ? { filename: item.exportFilename, target: item.exportTarget, ref: item.exportRef } : null,
     })
   } catch (e) {
     console.error('[ingest]', e)

@@ -5,6 +5,7 @@
 const prisma = require('../db')
 const ocr = require('./ocr')
 const { decideRoute, deliverToMailbox } = require('./inbound-router')
+const { decideExport } = require('./export-rules')
 const storage = require('./storage')
 
 async function logEvent(itemId, type, detail, actor = 'system') {
@@ -43,9 +44,10 @@ async function runPipeline(item, actor) {
   await logEvent(item.id, 'CLASSIFIED', `addressee="${item.extractedName || ''}"`, actor)
 
   // 2. Route.
-  const [rules, mailboxes] = await Promise.all([
+  const [rules, mailboxes, exportRules] = await Promise.all([
     prisma.inboundRoutingRule.findMany({ where: { tenantId: item.tenantId, isActive: true } }),
     prisma.mailbox.findMany({ where: { tenantId: item.tenantId, isActive: true } }),
+    prisma.inboundExportRule.findMany({ where: { tenantId: item.tenantId, isActive: true } }),
   ])
   const decision = decideRoute(item, rules, mailboxes)
 
@@ -71,6 +73,18 @@ async function runPipeline(item, actor) {
       data: { status: 'DELIVERED', deliveredEmail: mailbox.email, deliveredAt: new Date() },
     })
     await logEvent(item.id, 'DELIVERED', sent ? `Emailed ${mailbox.email}` : `Queued for ${mailbox.email} (email not configured)`, actor)
+  }
+
+  // 4. Export/filing — identify a reference and name the file for a watch folder.
+  if (exportRules.length) {
+    const exp = decideExport(item, exportRules)
+    if (exp) {
+      item = await prisma.inboundItem.update({
+        where: { id: item.id },
+        data: { exportRef: exp.ref, exportFilename: exp.filename, exportTarget: exp.target },
+      })
+      await logEvent(item.id, 'EXPORT', `${exp.ref} → ${exp.filename} (${exp.target}) [rule "${exp.ruleName}"]`, actor)
+    }
   }
   return item
 }

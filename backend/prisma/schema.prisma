@@ -50,6 +50,7 @@ model Tenant {
   mailboxes    Mailbox[]
   inboundRules InboundRoutingRule[]
   inboundItems InboundItem[]
+  exportRules  InboundExportRule[]
   teams        Team[]
 }
 
@@ -365,6 +366,26 @@ model InboundRoutingRule {
   @@index([tenantId])
 }
 
+/// A per-client export/filing rule: identify a reference by FORMAT MASK in the
+/// document text, name the file, and export it to a downstream watch folder.
+model InboundExportRule {
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  name             String
+  priority         Int      @default(0)     // higher wins
+  matchDocumentType String?                 // only apply to this classified type
+  matchKeyword     String?                  // only apply when text contains this (e.g. client name)
+  format           String                   // mask: # digit, #+ one-or-more digits, else literal
+  filenameTemplate String   @default("{ref}.pdf")
+  exportTarget     String   @default("default") // agent maps this to a local watch folder
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
 /// A single piece of inbound post moving through the pipeline.
 model InboundItem {
   id            String  @id @default(cuid())
@@ -386,6 +407,11 @@ model InboundItem {
   matchedMailbox   Mailbox?      @relation(fields: [matchedMailboxId], references: [id])
   matchedRuleId    String?
   routingReason    String?            // audit: why it routed where it did
+
+  // Export/filing layer — reference extracted + filename for a downstream watch folder
+  exportRef      String?
+  exportFilename String?
+  exportTarget   String?
   deliveredEmail   String?
   deliveredAt      DateTime?
 

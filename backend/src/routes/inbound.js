@@ -238,6 +238,57 @@ router.delete('/rules/:id', requireManage, async (req, res) => {
   res.json({ deleted: true })
 })
 
+// ─────────────────────────── EXPORT (FILING) RULES ───────────────────────────
+router.get('/export-rules', requireManage, async (req, res) => {
+  const rules = await prisma.inboundExportRule.findMany({
+    where: { tenantId: req.user.tenantId },
+    orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+  })
+  res.json({ rules })
+})
+router.post('/export-rules', requireManage, async (req, res) => {
+  const { name, priority, matchDocumentType, matchKeyword, format, filenameTemplate, exportTarget } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' })
+  if (!format?.trim()) return res.status(400).json({ error: 'A case-number format is required' })
+  const rule = await prisma.inboundExportRule.create({
+    data: {
+      tenantId: req.user.tenantId, name: name.trim(),
+      priority: Number.isFinite(+priority) ? +priority : 0,
+      matchDocumentType: matchDocumentType || null,
+      matchKeyword: matchKeyword || null,
+      format: format.trim(),
+      filenameTemplate: filenameTemplate?.trim() || '{ref}.pdf',
+      exportTarget: exportTarget?.trim() || 'default',
+    },
+  })
+  res.status(201).json(rule)
+})
+router.put('/export-rules/:id', requireManage, async (req, res) => {
+  const existing = await prisma.inboundExportRule.findFirst({ where: { id: req.params.id, tenantId: req.user.tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Not found' })
+  const { name, priority, matchDocumentType, matchKeyword, format, filenameTemplate, exportTarget, isActive } = req.body
+  const rule = await prisma.inboundExportRule.update({
+    where: { id: existing.id },
+    data: {
+      name: name ?? undefined,
+      priority: priority !== undefined ? +priority : undefined,
+      matchDocumentType: matchDocumentType !== undefined ? (matchDocumentType || null) : undefined,
+      matchKeyword: matchKeyword !== undefined ? (matchKeyword || null) : undefined,
+      format: format ?? undefined,
+      filenameTemplate: filenameTemplate ?? undefined,
+      exportTarget: exportTarget ?? undefined,
+      isActive: isActive !== undefined ? !!isActive : undefined,
+    },
+  })
+  res.json(rule)
+})
+router.delete('/export-rules/:id', requireManage, async (req, res) => {
+  const existing = await prisma.inboundExportRule.findFirst({ where: { id: req.params.id, tenantId: req.user.tenantId } })
+  if (!existing) return res.status(404).json({ error: 'Not found' })
+  await prisma.inboundExportRule.delete({ where: { id: existing.id } })
+  res.json({ deleted: true })
+})
+
 // ───────────────────────────────── ITEMS ─────────────────────────────────────
 router.get('/items', async (req, res) => {
   const { status, limit = '100', offset = '0' } = req.query
