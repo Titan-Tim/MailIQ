@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
+    "setup": "node src/setup.js",
     "start": "node src/index.js",
     "ping": "node src/index.js --ping",
     "once": "node src/index.js --once"

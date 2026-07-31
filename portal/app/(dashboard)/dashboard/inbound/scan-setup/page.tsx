@@ -89,8 +89,8 @@ export default function ScanSetupPage() {
         <h2 className="font-semibold text-gray-800 mb-3">Set up the scan-folder agent</h2>
         <ol className="text-sm text-gray-600 space-y-2 list-decimal pl-5">
           <li>Install the Mail-IQ scan-folder agent on an office PC (provided separately), and run <code className="bg-gray-50 px-1 rounded">npm install</code>.</li>
-          <li>Copy <code className="bg-gray-50 px-1 rounded">config.example.json</code> to <code className="bg-gray-50 px-1 rounded">config.json</code> and paste the <strong>ingest key</strong> above, your Mail-IQ URL, and the hot-folder path.</li>
-          <li>Run <code className="bg-gray-50 px-1 rounded">npm run ping</code> to check the connection, then <code className="bg-gray-50 px-1 rounded">npm start</code> to begin watching.</li>
+          <li>Run <code className="bg-gray-50 px-1 rounded">npm run setup</code> — a short wizard asks for your Mail-IQ address, the <strong>ingest key</strong> above (copy it), and your scan-folder path, then runs a live connection test.</li>
+          <li>Run <code className="bg-gray-50 px-1 rounded">npm start</code> to begin watching.</li>
           <li>Scan a batch (documents separated by the sheet above) into the hot folder — each document is split out, classified, and routed to the right mailbox.</li>
         </ol>
       </div>

@@ -18,26 +18,20 @@ It's pure JavaScript/WASM — **no native binaries or build tools required**.
    ```
    npm install
    ```
-3. Copy `config.example.json` to `config.json` and fill it in:
-   ```json
-   {
-     "apiUrl": "https://mailiq-production.up.railway.app",
-     "ingestKey": "miqk_...your key from the portal...",
-     "hotFolder": "C:\\Mailroom Hot Folder",
-     "scale": 2.5
-   }
+3. Run the setup wizard — it asks for your Mail-IQ address, ingest key and scan
+   folder, then runs a live connection test and writes `config.json` for you:
    ```
-   - **ingestKey** — get it in the portal under Inbound → Scan Folder (admin only).
-   - **hotFolder** — the folder your scanner saves into.
-4. Test the connection:
+   npm run setup
    ```
-   npm run ping
-   ```
-5. Start watching:
+   (Get the **ingest key** in the portal under **Inbound → Scan Folder**, admin only.)
+4. Start watching:
    ```
    npm start
    ```
    Leave it running. To run once over what's already in the folder and exit, use `npm run once`.
+
+Prefer to configure by hand? Copy `config.example.json` to `config.json`, fill it
+in, and use `npm run ping` to test — but `npm run setup` does all of this for you.
 
 ## Separator sheets
 Print a stack of `mailiq-separator-sheet.pdf` and place **one between each document**
