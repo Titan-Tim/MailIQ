@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { apiFetch, apiUpload } from '@/lib/api'
-import { Upload, CloudUpload, FileText, ChevronRight, Clock, CheckCircle2, Zap, Send, Printer, AlertCircle, Trash2 } from 'lucide-react'
+import { Upload, CloudUpload, FileText, ChevronRight, Clock, CheckCircle2, Zap, Send, Printer, AlertCircle, Trash2, Loader2 } from 'lucide-react'
 
 const STATUS_STYLE: Record<string, string> = {
   PENDING:   'bg-amber-100 text-amber-700',
@@ -31,6 +31,8 @@ export default function InboxPage() {
   const [dragOver, setDragOver] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function load() {
@@ -41,12 +43,31 @@ export default function InboxPage() {
       const data = await apiFetch(`/api/dispatches?${params}`)
       setDispatches(data.dispatches)
       setTotal(data.total)
+      setSelected(new Set())
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => { load() }, [search, statusFilter])
+
+  function toggle(id: string) {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAll() {
+    setSelected((prev) => (prev.size === dispatches.length ? new Set() : new Set(dispatches.map((d) => d.id))))
+  }
+  const allSelected = dispatches.length > 0 && selected.size === dispatches.length
+  const someSelected = selected.size > 0
+
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    if (!confirm(`Delete ${selected.size} item${selected.size === 1 ? '' : 's'}? This cannot be undone.`)) return
+    setBulkBusy(true)
+    try { await Promise.all(Array.from(selected).map((id) => apiFetch(`/api/dispatches/${id}`, { method: 'DELETE' }))) }
+    finally { setBulkBusy(false) }
+    load()
+  }
 
   async function uploadFile(file: File) {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -148,52 +169,72 @@ export default function InboxPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100">
+            <input type="checkbox" aria-label="Select all"
+              checked={allSelected}
+              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+              onChange={toggleAll}
+              className="w-4 h-4 accent-violet-600 cursor-pointer" />
+            <span className="text-sm font-medium text-gray-600">{someSelected ? `${selected.size} selected` : 'Select all'}</span>
+            {someSelected && (
+              <button onClick={deleteSelected} disabled={bulkBusy}
+                className="ml-auto flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg disabled:opacity-60 transition-colors">
+                {bulkBusy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete selected ({selected.size})
+              </button>
+            )}
+          </div>
           {dispatches.map(d => {
             const StatusIcon = STATUS_ICON[d.status] || FileText
             return (
-              <a key={d.id} href={`/dashboard/inbox/${d.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
-                <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-                  <FileText size={15} className="text-violet-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm truncate">{d.originalFileName}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-400">
-                      {d.recipient
-                        ? `${d.recipient.firstName || ''} ${d.recipient.lastName}`.trim()
-                        : 'No recipient'}
-                    </span>
-                    {d.reference && (
-                      <span className="text-xs text-gray-400">· Ref: {d.reference}</span>
-                    )}
-                    {d._count?.inserts > 0 && (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                        +{d._count.inserts} inserts
-                      </span>
-                    )}
+              <div key={d.id}
+                className={`flex items-center gap-3 px-5 py-3.5 transition-colors ${selected.has(d.id) ? 'bg-violet-50/50' : 'hover:bg-gray-50'}`}>
+                <input type="checkbox" aria-label={`Select ${d.originalFileName}`}
+                  checked={selected.has(d.id)} onChange={() => toggle(d.id)}
+                  className="w-4 h-4 accent-violet-600 cursor-pointer shrink-0" />
+                <a href={`/dashboard/inbox/${d.id}`}
+                  className="flex items-center gap-4 flex-1 min-w-0 group">
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
+                    <FileText size={15} className="text-violet-600" />
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {d.digitalSend?.firstOpenedAt && (
-                    <span className="text-xs text-emerald-600 font-medium">Opened</span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[d.status] || ''}`}>
-                    {d.status}
-                  </span>
-                  <span className="text-xs text-gray-400 w-20 text-right">
-                    {new Date(d.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                  </span>
-                  <button
-                    onClick={e => deleteDispatch(e, d.id)}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                  <ChevronRight size={14} className="text-gray-300" />
-                </div>
-              </a>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm truncate">{d.originalFileName}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-400">
+                        {d.recipient
+                          ? `${d.recipient.firstName || ''} ${d.recipient.lastName}`.trim()
+                          : 'No recipient'}
+                      </span>
+                      {d.reference && (
+                        <span className="text-xs text-gray-400">· Ref: {d.reference}</span>
+                      )}
+                      {d._count?.inserts > 0 && (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                          +{d._count.inserts} inserts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {d.digitalSend?.firstOpenedAt && (
+                      <span className="text-xs text-emerald-600 font-medium">Opened</span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[d.status] || ''}`}>
+                      {d.status}
+                    </span>
+                    <span className="text-xs text-gray-400 w-20 text-right">
+                      {new Date(d.uploadedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                </a>
+                <button
+                  onClick={e => deleteDispatch(e, d.id)}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                  title="Delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+                <ChevronRight size={14} className="text-gray-300 shrink-0" />
+              </div>
             )
           })}
         </div>
