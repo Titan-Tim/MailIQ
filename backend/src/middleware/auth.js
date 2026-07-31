@@ -28,9 +28,10 @@ async function requireAuth(req, res, next) {
       if (user.tenant.status === 'SUSPENDED') {
         return res.status(403).json({ error: 'Account suspended', reason: user.tenant.suspendReason || undefined })
       }
-      if (user.tenant.licenceExpiresAt && new Date() > user.tenant.licenceExpiresAt) {
-        return res.status(403).json({ error: 'Licence expired', reason: 'Your Mail-IQ licence has expired. Please contact your provider.' })
-      }
+      // Licence expiry/validity via the resolver — DB in SaaS, signed file on-prem.
+      const lic = getLicence(user.tenant)
+      if (lic.invalid) return res.status(403).json({ error: 'Licence invalid', reason: lic.reason })
+      if (lic.expired) return res.status(403).json({ error: 'Licence expired', reason: lic.reason })
     }
     req.user = user
     next()

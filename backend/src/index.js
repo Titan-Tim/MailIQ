@@ -56,5 +56,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' })
 })
 
+const { licenceStatus } = require('./services/licence')
+function logLicence() {
+  const s = licenceStatus()
+  if (s.mode === 'saas') return console.log('Licence: SaaS mode (entitlements from database)')
+  if (!s.valid) return console.warn(`Licence: ON-PREM — INVALID. ${s.reason} All modules locked until a valid licence is provided.`)
+  const exp = s.expiresAt ? new Date(s.expiresAt).toISOString().slice(0, 10) : 'no expiry'
+  console.log(`Licence: ON-PREM — "${s.org}" — modules [${s.modules.join(', ')}] — expires ${exp}${s.expired ? ' (EXPIRED)' : ''}${s.maxUsers ? ` — maxUsers ${s.maxUsers}` : ''}`)
+}
+
 const PORT = process.env.PORT || 3002
-app.listen(PORT, () => console.log(`Mail-IQ API running on :${PORT}`))
+app.listen(PORT, () => { console.log(`Mail-IQ API running on :${PORT}`); logLicence() })

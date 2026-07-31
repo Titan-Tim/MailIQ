@@ -81,7 +81,7 @@ router.post('/login', async (req, res) => {
         brandColor: user.tenant.brandColor,
         plan:       user.tenant.plan,
         modules:    getLicence(user.tenant).modules,
-        licenceExpiresAt: user.tenant.licenceExpiresAt,
+        licenceExpiresAt: getLicence(user.tenant).expiresAt,
       }
     }
   })

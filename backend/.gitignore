@@ -2,3 +2,7 @@ node_modules
 .env
 uploads/*
 !uploads/.gitkeep
+
+# Licence signing key — SECRET. Never commit. The public key IS committed.
+licence/licence-private.pem
+*.licence
