@@ -249,14 +249,17 @@ router.get('/export-rules', requireManage, async (req, res) => {
 router.post('/export-rules', requireManage, async (req, res) => {
   const { name, priority, matchDocumentType, matchKeyword, format, filenameTemplate, exportTarget } = req.body
   if (!name?.trim()) return res.status(400).json({ error: 'name required' })
-  if (!format?.trim()) return res.status(400).json({ error: 'A case-number format is required' })
+  // A rule needs either a case-number format, or a match condition (forward rule).
+  if (!format?.trim() && !matchKeyword && !matchDocumentType) {
+    return res.status(400).json({ error: 'Add a case-number format, or a match keyword / document type to forward matching documents' })
+  }
   const rule = await prisma.inboundExportRule.create({
     data: {
       tenantId: req.user.tenantId, name: name.trim(),
       priority: Number.isFinite(+priority) ? +priority : 0,
       matchDocumentType: matchDocumentType || null,
       matchKeyword: matchKeyword || null,
-      format: format.trim(),
+      format: format?.trim() || '',
       filenameTemplate: filenameTemplate?.trim() || '{ref}.pdf',
       exportTarget: exportTarget?.trim() || 'default',
     },

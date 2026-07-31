@@ -22,8 +22,7 @@ export default function FilingRulesPage() {
 
   async function add() {
     if (!form.name) { setError('Give the rule a name'); return }
-    if (!form.format) { setError('Enter the case-number format'); return }
-    if (!form.matchKeyword && !form.matchDocumentType) { setError('Add a match keyword and/or document type so the rule knows which documents it applies to'); return }
+    if (!form.format && !form.matchKeyword && !form.matchDocumentType) { setError('Add a case-number format, or a match keyword / document type'); return }
     setBusy(true); setError('')
     try { await apiFetch('/api/inbound/export-rules', { method: 'POST', body: JSON.stringify(form) }); setForm(empty); await load() }
     catch (e: any) { setError(e.message) } finally { setBusy(false) }
@@ -85,9 +84,9 @@ export default function FilingRulesPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600">Case-number format</label>
+              <label className="text-xs font-medium text-gray-600">Case-number format <span className="text-gray-400">(optional)</span></label>
               <input className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-violet-500" placeholder="e.g. HG/####/####" value={form.format} onChange={(e) => setForm({ ...form, format: e.target.value })} />
-              <p className="text-[11px] text-gray-400 mt-1"><code>#</code> = a digit, <code>#+</code> = one or more digits, everything else is literal. E.g. <code>HC-####-######</code>, <code>#######</code>.</p>
+              <p className="text-[11px] text-gray-400 mt-1"><code>#</code> = a digit, <code>#+</code> = one or more digits, else literal (e.g. <code>HC-####-######</code>). <strong>Leave blank to forward the document as-is</strong> — e.g. invoices → Invoice-IQ.</p>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-600">Saved filename</label>

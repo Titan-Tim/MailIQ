@@ -40,6 +40,16 @@ async function uploadDoc(buffer, filename) {
   return res.json()
 }
 
+// Avoid overwriting a file already sitting in a watch folder.
+function uniquePath(folder, filename) {
+  const ext = path.extname(filename)
+  const base = path.basename(filename, ext)
+  let candidate = path.join(folder, filename)
+  let i = 1
+  while (fs.existsSync(candidate)) candidate = path.join(folder, `${base}-${i++}${ext}`)
+  return candidate
+}
+
 function moveTo(folder, filePath) {
   fs.mkdirSync(folder, { recursive: true })
   const base = path.basename(filePath)
@@ -71,14 +81,18 @@ async function processBatch(filePath) {
       const r = await uploadDoc(doc.buffer, docName)
       log(`  ✓ uploaded ${docName} → ${r.status}${r.mailbox ? ` (${r.documentType} → ${r.mailbox})` : ` (${r.documentType || 'unclassified'})`}`)
 
-      // Filing: if a case number was identified, write the document to the watch folder.
+      // Filing/forwarding: write the document to the folder mapped to its target
+      // (e.g. proclaim → case-management, invoice-iq → AP automation hot folder).
       if (r.export && r.export.filename) {
-        if (cfg.exportFolder) {
-          fs.mkdirSync(cfg.exportFolder, { recursive: true })
-          fs.writeFileSync(path.join(cfg.exportFolder, r.export.filename), doc.buffer)
-          log(`    ↳ filed as ${r.export.filename} → ${cfg.exportFolder}`)
+        const target = r.export.target || 'default'
+        const folder = (cfg.exportFolders && cfg.exportFolders[target]) || cfg.exportFolder
+        if (folder) {
+          fs.mkdirSync(folder, { recursive: true })
+          const dest = uniquePath(folder, r.export.filename)
+          fs.writeFileSync(dest, doc.buffer)
+          log(`    ↳ ${r.export.ref ? `filed as` : `forwarded as`} ${path.basename(dest)} → ${target}`)
         } else {
-          log(`    ↳ identified ${r.export.filename} but no exportFolder set — add one to config.json to file it`)
+          log(`    ↳ ${r.export.filename} for target "${target}" — no folder configured (add exportFolders["${target}"] in config.json)`)
         }
       }
     }

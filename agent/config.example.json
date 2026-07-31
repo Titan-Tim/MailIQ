@@ -3,5 +3,8 @@
   "ingestKey": "miqk_paste-your-ingest-key-from-the-portal-here",
   "hotFolder": "C:\\Mailroom Hot Folder",
   "scale": 2,
-  "exportFolder": "C:\\Proclaim Hot Folder"
+  "exportFolders": {
+    "proclaim": "C:\\Proclaim Hot Folder",
+    "invoice-iq": "C:\\Invoice-IQ Hot Folder"
+  }
 }

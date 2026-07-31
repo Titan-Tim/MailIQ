@@ -58,13 +58,22 @@ function decideExport(item, rules) {
   for (const rule of [...rules].sort((a, b) => b.priority - a.priority)) {
     if (rule.matchDocumentType && (item.documentType || '').toLowerCase() !== rule.matchDocumentType.toLowerCase()) continue
     if (rule.matchKeyword && !hay.includes(rule.matchKeyword.toLowerCase())) continue
-    const ref = extractRef(text, rule.format)
-    if (!ref) continue
-    return {
-      ref,
-      filename: buildFilename(rule.filenameTemplate, { ref, type: item.documentType }),
-      target: rule.exportTarget || 'default',
-      ruleName: rule.name,
+
+    if (rule.format && rule.format.trim()) {
+      // Extraction rule — identify a reference; skip if not found.
+      const ref = extractRef(text, rule.format)
+      if (!ref) continue
+      return {
+        ref,
+        filename: buildFilename(rule.filenameTemplate, { ref, type: item.documentType }),
+        target: rule.exportTarget || 'default',
+        ruleName: rule.name,
+      }
+    } else {
+      // Forward rule (no format) — export the document as-is (e.g. invoices → Invoice-IQ).
+      const custom = rule.filenameTemplate && rule.filenameTemplate !== '{ref}.pdf'
+      const filename = custom ? buildFilename(rule.filenameTemplate, { ref: '', type: item.documentType }) : (item.fileName || 'document.pdf')
+      return { ref: null, filename, target: rule.exportTarget || 'default', ruleName: rule.name, forwarded: true }
     }
   }
   return null
