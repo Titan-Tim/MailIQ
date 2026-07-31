@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
-import { AtSign, Plus, Trash2, Star, Loader2 } from 'lucide-react'
+import { AtSign, Plus, Trash2, Star, Loader2, Pencil, X } from 'lucide-react'
 
 const empty = { name: '', department: '', email: '', keywords: '', isDefault: false }
 
@@ -16,6 +16,7 @@ export default function MailboxesPage() {
   const [mailboxes, setMailboxes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(empty)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,17 +27,29 @@ export default function MailboxesPage() {
   }
   useEffect(() => { load() }, [])
 
-  async function add() {
+  function startEdit(m: any) {
+    setForm({
+      name: m.name || '', department: m.department || '', email: m.email || '',
+      keywords: m.keywords || '', isDefault: !!m.isDefault,
+    })
+    setEditingId(m.id); setError('')
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  function cancelEdit() { setForm(empty); setEditingId(null); setError('') }
+
+  async function save() {
     if (!form.name || !form.email) { setError('Name and email are required'); return }
     setBusy(true); setError('')
     try {
-      await apiFetch('/api/inbound/mailboxes', { method: 'POST', body: JSON.stringify(form) })
-      setForm(empty)
+      if (editingId) await apiFetch(`/api/inbound/mailboxes/${editingId}`, { method: 'PUT', body: JSON.stringify(form) })
+      else await apiFetch('/api/inbound/mailboxes', { method: 'POST', body: JSON.stringify(form) })
+      cancelEdit()
       await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
 
   async function remove(id: string) {
+    if (editingId === id) cancelEdit()
     await apiFetch(`/api/inbound/mailboxes/${id}`, { method: 'DELETE' })
     await load()
   }
@@ -63,7 +76,7 @@ export default function MailboxesPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {mailboxes.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                <div key={m.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${editingId === m.id ? 'bg-violet-50/60' : 'hover:bg-gray-50'}`}>
                   <Link href={`/dashboard/mailboxes/${m.id}`} className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
                       <AtSign size={15} className="text-violet-700" />
@@ -81,6 +94,11 @@ export default function MailboxesPage() {
                     </div>
                   </Link>
                   <span className="text-xs text-gray-400">{m._count?.items ?? 0} routed</span>
+                  {(!m.kind || m.kind === 'GENERAL') && (
+                    <button onClick={() => startEdit(m)} className={`transition-colors ${editingId === m.id ? 'text-violet-700' : 'text-gray-300 hover:text-violet-700'}`} title="Edit mailbox">
+                      <Pencil size={14} />
+                    </button>
+                  )}
                   <button onClick={() => remove(m.id)} className="text-gray-300 hover:text-red-600 transition-colors" title="Deactivate">
                     <Trash2 size={15} />
                   </button>
@@ -92,7 +110,10 @@ export default function MailboxesPage() {
 
         {/* Add form */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 h-fit">
-          <h3 className="font-semibold text-gray-800 mb-4">Add mailbox</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">{editingId ? 'Edit mailbox' : 'Add mailbox'}</h3>
+            {editingId && <button onClick={cancelEdit} className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"><X size={12} /> Cancel</button>}
+          </div>
           <div className="space-y-3">
             <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500"
               placeholder="Name (e.g. Accounts)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -107,9 +128,9 @@ export default function MailboxesPage() {
               Default catch-all mailbox
             </label>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button onClick={add} disabled={busy}
+            <button onClick={save} disabled={busy}
               className="w-full flex items-center justify-center gap-2 bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg">
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} Add mailbox
+              {busy ? <Loader2 size={15} className="animate-spin" /> : editingId ? <Pencil size={15} /> : <Plus size={15} />} {editingId ? 'Save changes' : 'Add mailbox'}
             </button>
           </div>
         </div>
