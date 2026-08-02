@@ -60,6 +60,14 @@ Without a licence file the app runs **unlicensed in database mode** (both module
 handy for initial testing). With one, only the licensed modules are usable and the
 app locks at expiry. Renewal = drop in a new file and restart the backend.
 
+## OCR (scanned documents)
+
+The image bundles **Tesseract** (`OCR_DRIVER=tesseract`), so scanned/image-only
+documents are read entirely on-box — no cloud, air-gap safe. Digital PDFs are read
+straight from their text layer (faster, exact) and only image-only pages fall back
+to OCR. Set `OCR_DRIVER=stub` to disable OCR. Extra languages: install the matching
+`tesseract-ocr-<lang>` package and set `TESSERACT_LANG`.
+
 ## Email (optional)
 
 Set `SMTP_*` in `.env` to the customer's mail server for password-reset and invite

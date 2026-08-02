@@ -38,6 +38,10 @@ services:
       API_URL: ${PUBLIC_URL}
       # Local file storage (durable volume) instead of Vercel Blob
       UPLOADS_DIR: /data/uploads
+      # Local OCR for scanned/image-only documents (tesseract is in the image).
+      # Digital PDFs are still read via their text layer regardless.
+      OCR_DRIVER: ${OCR_DRIVER:-tesseract}
+      TESSERACT_LANG: ${TESSERACT_LANG:-eng}
       # Licence (signed, on-prem). Leave the file absent to run unlicensed in DB
       # mode for testing; provide it to enforce module entitlements + expiry.
       MAILIQ_LICENCE_FILE: /licence/mailiq.licence
