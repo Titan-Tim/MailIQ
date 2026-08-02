@@ -11,10 +11,21 @@
 
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib')
 const bwipjs = require('bwip-js')
+const QRCode = require('qrcode')
 const storage = require('./storage')
 
 const MM = 2.8346   // 1 mm in PDF points
 const A4_H = 841.89 // A4 height in points
+
+// Item QR token — encodes the dispatch's unique code so a returned document can
+// be matched back through the inbound scanner (closed loop). Opaque: no personal
+// data, just the code that maps to the dispatch in the database.
+const ITEM_QR_PREFIX = 'MAILIQ:ITEM:v1:'
+function itemQrText(barcodeCode) { return ITEM_QR_PREFIX + barcodeCode }
+
+async function generateQrPng(text) {
+  return QRCode.toBuffer(text, { type: 'png', errorCorrectionLevel: 'M', margin: 1, scale: 6 })
+}
 
 // ── Address overlay ──────────────────────────────────────────────────────────
 
@@ -62,7 +73,7 @@ async function generateBarcodePng(text) {
  * @param {object} tenant       - Tenant record (carries addressZone config)
  * @returns {Buffer} composed PDF bytes
  */
-async function composeDispatch(dispatch, recipient, inserts, tenant) {
+async function composeDispatch(dispatch, recipient, inserts, tenant, options = {}) {
   // Load original document
   const originalBytes = await storage.readFile(dispatch.originalFileKey)
   const pdfDoc = await PDFDocument.load(originalBytes)
@@ -128,6 +139,26 @@ async function composeDispatch(dispatch, recipient, inserts, tenant) {
     // Non-fatal — continue without barcode
   }
 
+  // ── Return QR overlay (campaigns) ──────────────────────────────────────────
+  // A unique QR (top-right of page 1) so a returned document scanned by the
+  // inbound mailroom can be matched back to this exact dispatch/recipient.
+  if (options.qr) {
+    try {
+      const qrPng = await generateQrPng(itemQrText(dispatch.barcodeCode))
+      const qrImg = await pdfDoc.embedPng(qrPng)
+      const qrSize = 20 * MM
+      const qrX = pageW - qrSize - 8 * MM
+      const qrY = pageH - qrSize - 8 * MM
+      firstPage.drawImage(qrImg, { x: qrX, y: qrY, width: qrSize, height: qrSize })
+      firstPage.drawText('Scan on return', {
+        x: qrX, y: qrY - 7, size: 5.5, font: helvetica, color: rgb(0.4, 0.4, 0.4),
+      })
+    } catch (qrErr) {
+      console.error('QR generation error:', qrErr)
+      // Non-fatal — continue without QR
+    }
+  }
+
   // ── Append inserts ────────────────────────────────────────────────────────
   for (const ins of inserts) {
     try {
@@ -166,4 +197,4 @@ async function mergePdfs(fileKeys) {
   return Buffer.from(await merged.save())
 }
 
-module.exports = { composeDispatch, mergePdfs }
+module.exports = { composeDispatch, mergePdfs, itemQrText, ITEM_QR_PREFIX }

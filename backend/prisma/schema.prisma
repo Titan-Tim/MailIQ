@@ -46,6 +46,7 @@ model Tenant {
   rules      DispatchRule[]
   dispatches Dispatch[]
   batches    PrintBatch[]
+  campaigns  Campaign[]
 
   // Inbound module (Digital Mailroom) — additive, does not affect outbound
   mailboxes    Mailbox[]
@@ -174,6 +175,8 @@ model Dispatch {
   tenant           Tenant         @relation(fields: [tenantId], references: [id])
   recipientId      String?
   recipient        Recipient?     @relation(fields: [recipientId], references: [id])
+  campaignId       String?
+  campaign         Campaign?      @relation(fields: [campaignId], references: [id])
   originalFileKey  String
   originalFileName String
   fileSizeBytes    Int
@@ -200,6 +203,33 @@ model Dispatch {
 
   @@index([tenantId, status])
   @@index([barcodeCode])
+  @@index([campaignId])
+}
+
+// A mailshot: one base document sent to many recipients, each personalised
+// (address + reference + unique QR) and routed by the recipient's preference.
+model Campaign {
+  id           String         @id @default(cuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  name         String
+  baseFileKey  String
+  baseFileName String
+  subject      String?        // email subject for digital recipients
+  addQr        Boolean        @default(true) // stamp a unique return QR on each copy
+  status       CampaignStatus @default(DRAFT)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  dispatches Dispatch[]
+
+  @@index([tenantId])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  SENT
 }
 
 model DispatchInsert {

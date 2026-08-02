@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
   Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
-  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2, FolderOutput, Lock
+  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2, FolderOutput, Lock, Megaphone
 } from 'lucide-react'
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sol-iq.co.uk'
@@ -28,6 +28,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
     items: [
       { href: '/dashboard',           label: 'Overview',       icon: LayoutDashboard },
       { href: '/dashboard/inbox',     label: 'Outbox',         icon: Inbox },
+      { href: '/dashboard/campaigns', label: 'Campaigns',      icon: Megaphone },
       { href: '/dashboard/print',     label: 'Print Queue',    icon: Printer },
       { href: '/dashboard/digital',   label: 'Digital Sent',   icon: Send },
       { href: '/dashboard/recipients',label: 'Recipients',     icon: Users },

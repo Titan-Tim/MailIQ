@@ -16,6 +16,7 @@ const usersRouter     = require('./routes/users')
 const teamsRouter     = require('./routes/teams')
 const ingestRouter    = require('./routes/ingest')
 const platformRouter  = require('./routes/platform')
+const campaignRouter  = require('./routes/campaigns')
 
 const app = express()
 
@@ -42,6 +43,7 @@ app.use('/api/users',      usersRouter)
 app.use('/api/teams',      teamsRouter)
 app.use('/api/ingest',     ingestRouter)
 app.use('/api/platform',   platformRouter)
+app.use('/api/campaigns',  campaignRouter)
 
 // Public tracking route (no auth — recipient-facing)
 app.use('/api/track', trackRouter)
