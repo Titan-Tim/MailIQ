@@ -1,0 +1,24 @@
+# Mail-IQ reverse proxy.
+# PUBLIC_HOST comes from .env (e.g. mailiq.yourfirm.local or mail.yourfirm.com).
+# Everything is served on one origin: /api/* -> backend, everything else -> portal.
+
+{$PUBLIC_HOST} {
+	encode gzip
+
+	# API — keep the /api prefix (the backend routes are mounted under /api).
+	@api path /api/*
+	reverse_proxy @api backend:3002
+
+	# Portal (Next.js) — everything else.
+	reverse_proxy portal:3000
+
+	# LAN / air-gapped default: Caddy's internal CA issues a local certificate
+	# (no internet needed). Trust the Caddy root CA on client machines, or replace
+	# this line to use your own cert:   tls /path/cert.pem /path/key.pem
+	# For a PUBLIC domain with automatic Let's Encrypt, DELETE the line below.
+	tls internal
+
+	request_body {
+		max_size 30MB
+	}
+}

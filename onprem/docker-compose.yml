@@ -1,0 +1,92 @@
+name: mail-iq
+
+# One-box Mail-IQ (on-prem). See README.md. Configure via .env (copy .env.example).
+#   docker compose up -d --build
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mailiq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-mailiq}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mailiq} -d ${POSTGRES_DB:-mailiq}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../onprem/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mailiq}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mailiq}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      PORT: "3002"
+      # Same-origin URLs (all served via Caddy at PUBLIC_URL)
+      FRONTEND_URL: ${PUBLIC_URL}
+      PORTAL_URL: ${PUBLIC_URL}
+      API_URL: ${PUBLIC_URL}
+      # Local file storage (durable volume) instead of Vercel Blob
+      UPLOADS_DIR: /data/uploads
+      # Licence (signed, on-prem). Leave the file absent to run unlicensed in DB
+      # mode for testing; provide it to enforce module entitlements + expiry.
+      MAILIQ_LICENCE_FILE: /licence/mailiq.licence
+      # SMTP (optional — leave SMTP_HOST empty to disable email)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      FROM_NAME: ${FROM_NAME:-Mail-IQ}
+      FROM_EMAIL: ${FROM_EMAIL:-noreply@mailiq.local}
+      # First-run bootstrap (only used when the DB has no tenants yet)
+      BOOTSTRAP_ORG: ${BOOTSTRAP_ORG:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
+    volumes:
+      - uploads:/data/uploads
+      - ${LICENCE_DIR:-./licence}:/licence:ro
+
+  portal:
+    build:
+      context: ../portal
+      dockerfile: ../onprem/portal.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL}
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@sol-iq.co.uk}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - portal
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+volumes:
+  pgdata:
+  uploads:
+  caddydata:
+  caddyconfig:

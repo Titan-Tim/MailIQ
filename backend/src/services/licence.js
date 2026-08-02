@@ -30,9 +30,14 @@ function readPublicKey() {
   if (process.env.MAILIQ_LICENCE_PUBLIC_KEY) return process.env.MAILIQ_LICENCE_PUBLIC_KEY.replace(/\\n/g, '\n')
   try { return fs.readFileSync(path.join(__dirname, '..', '..', 'licence', 'licence-public.pem'), 'utf8') } catch { return null }
 }
+// Returns: a token string; '' if a licence IS configured but unreadable/empty
+// (→ treated as invalid, locked); or null if no licence is configured (→ SaaS mode).
 function readLicenceToken() {
   if (process.env.MAILIQ_LICENCE) return process.env.MAILIQ_LICENCE.trim()
-  if (process.env.MAILIQ_LICENCE_FILE) { try { return fs.readFileSync(process.env.MAILIQ_LICENCE_FILE, 'utf8').trim() } catch { return null } }
+  if (process.env.MAILIQ_LICENCE_FILE) {
+    try { return fs.readFileSync(process.env.MAILIQ_LICENCE_FILE, 'utf8').trim() }
+    catch { return '' } // configured but the file is missing/unreadable — do NOT fall back to DB
+  }
   return null
 }
 
@@ -42,7 +47,8 @@ let _parsed
 function parseSignedLicence() {
   if (_parsed !== undefined) return _parsed
   const token = readLicenceToken()
-  if (!token) { _parsed = null; return _parsed } // SaaS mode
+  if (token === null) { _parsed = null; return _parsed } // no licence configured → SaaS mode
+  if (!token) { _parsed = { valid: false, reason: 'A licence is configured but the licence file is missing or empty.' }; return _parsed }
   const pub = readPublicKey()
   if (!pub) { _parsed = { valid: false, reason: 'No licence public key is configured on this instance.' }; return _parsed }
   try {
