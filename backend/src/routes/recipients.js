@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     title, firstName, lastName, companyName,
-    accountNumber, reference, externalId, email,
+    accountNumber, reference, externalId, email, phone,
     addressLine1, addressLine2, city, county, postcode, country,
     deliveryMethod
   } = req.body
@@ -74,6 +74,7 @@ router.post('/', async (req, res) => {
       reference: reference || null,
       externalId: externalId || null,
       email: email?.toLowerCase() || null,
+      phone: phone || null,
       addressLine1, addressLine2, city, county,
       postcode: postcode?.toUpperCase() || null,
       country: country || 'GB',
@@ -92,7 +93,7 @@ router.put('/:id', async (req, res) => {
 
   const {
     title, firstName, lastName, companyName,
-    accountNumber, reference, externalId, email,
+    accountNumber, reference, externalId, email, phone,
     addressLine1, addressLine2, city, county, postcode, country,
     deliveryMethod, isActive
   } = req.body
@@ -105,6 +106,7 @@ router.put('/:id', async (req, res) => {
       reference:     reference     ?? undefined,
       externalId:    externalId    ?? undefined,
       email:         email         !== undefined ? (email?.toLowerCase() || null) : undefined,
+      phone:         phone         !== undefined ? (phone || null) : undefined,
       addressLine1, addressLine2, city, county,
       postcode:       postcode !== undefined ? (postcode?.toUpperCase() || null) : undefined,
       country:        country  ?? undefined,
@@ -159,6 +161,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         reference:     row.reference      || null,
         externalId:    row.externalId     || null,
         email:         row.email?.toLowerCase() || null,
+        phone:         row.phone          || null,
         addressLine1:  row.addressLine1   || null,
         addressLine2:  row.addressLine2   || null,
         city:          row.city           || null,

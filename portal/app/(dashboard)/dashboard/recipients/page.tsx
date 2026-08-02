@@ -7,11 +7,12 @@ const DELIVERY_STYLE: Record<string, string> = {
   DIGITAL: 'bg-blue-100 text-blue-700',
   POST:    'bg-gray-100 text-gray-600',
   AUTO:    'bg-amber-100 text-amber-700',
+  SMS:     'bg-sky-100 text-sky-700',
 }
 
 const EMPTY_FORM = {
   title: '', firstName: '', lastName: '', companyName: '',
-  accountNumber: '', reference: '', email: '',
+  accountNumber: '', reference: '', email: '', phone: '',
   addressLine1: '', addressLine2: '', city: '', county: '', postcode: '',
   deliveryMethod: 'AUTO',
 }
@@ -134,10 +135,13 @@ export default function RecipientsPage() {
               <input value={form.accountNumber} onChange={f('accountNumber')} className={inp} /></div>
             <div className="col-span-2"><label className="text-xs text-gray-600 mb-1 block">Email</label>
               <input type="email" value={form.email} onChange={f('email')} className={inp} /></div>
+            <div><label className="text-xs text-gray-600 mb-1 block">Phone (for SMS)</label>
+              <input type="tel" value={form.phone} onChange={f('phone')} placeholder="+44…" className={inp} /></div>
             <div><label className="text-xs text-gray-600 mb-1 block">Delivery</label>
               <select value={form.deliveryMethod} onChange={f('deliveryMethod')} className={inp}>
                 <option value="AUTO">Auto</option>
-                <option value="DIGITAL">Always digital</option>
+                <option value="DIGITAL">Always email</option>
+                <option value="SMS">Always SMS</option>
                 <option value="POST">Always post</option>
               </select></div>
             <div className="col-span-3"><label className="text-xs text-gray-600 mb-1 block">Address line 1</label>

@@ -101,17 +101,17 @@ async function ballot() {
 }
 
 const RECIPIENTS = [
-  ['title', 'firstName', 'lastName', 'companyName', 'accountNumber', 'email', 'addressLine1', 'city', 'postcode', 'deliveryMethod'],
-  ['Mr', 'James', 'Whitfield', '', 'NW-1001', 'james.whitfield@example.com', '14 Maple Avenue', 'Birmingham', 'B1 2AB', 'DIGITAL'],
-  ['Mrs', 'Sandra', 'Okonkwo', '', 'NW-1002', 'sandra.okonkwo@example.com', '7 Elm Street', 'Manchester', 'M2 4CD', 'DIGITAL'],
-  ['Dr', 'Robert', 'Chen', '', 'NW-1003', 'r.chen@example.com', '82 Oak Road', 'Leeds', 'LS1 3EF', 'AUTO'],
-  ['Ms', 'Priya', 'Nair', '', 'NW-1004', 'priya.nair@example.com', '31 Cedar Close', 'Bristol', 'BS1 5GH', 'DIGITAL'],
-  ['Mr', 'Thomas', 'Boyle', '', 'NW-1005', '', '5 Birch Way', 'Glasgow', 'G1 2JK', 'POST'],
-  ['Miss', 'Ava', 'Lindqvist', '', 'NW-1006', 'ava.l@example.com', '19 Willow Court', 'Cardiff', 'CF10 1LM', 'AUTO'],
-  ['Mr', 'Daniel', 'Osei', '', 'NW-1007', '', '44 Ash Grove', 'Sheffield', 'S1 2NO', 'POST'],
-  ['Mrs', 'Helen', 'Marsh', '', 'NW-1008', '', '2 Rowan Terrace', 'Newcastle', 'NE1 4PQ', 'POST'],
-  ['Mr', 'Kofi', 'Mensah', '', 'NW-1009', 'kofi.mensah@example.com', '8 Hazel Lane', 'Nottingham', 'NG1 5RS', 'DIGITAL'],
-  ['Ms', 'Grace', 'Fletcher', '', 'NW-1010', '', '27 Sycamore Drive', 'Liverpool', 'L1 6TU', 'POST'],
+  ['title', 'firstName', 'lastName', 'companyName', 'accountNumber', 'email', 'phone', 'addressLine1', 'city', 'postcode', 'deliveryMethod'],
+  ['Mr', 'James', 'Whitfield', '', 'NW-1001', 'james.whitfield@example.com', '+447700900001', '14 Maple Avenue', 'Birmingham', 'B1 2AB', 'DIGITAL'],
+  ['Mrs', 'Sandra', 'Okonkwo', '', 'NW-1002', 'sandra.okonkwo@example.com', '+447700900002', '7 Elm Street', 'Manchester', 'M2 4CD', 'DIGITAL'],
+  ['Dr', 'Robert', 'Chen', '', 'NW-1003', 'r.chen@example.com', '+447700900003', '82 Oak Road', 'Leeds', 'LS1 3EF', 'AUTO'],
+  ['Ms', 'Priya', 'Nair', '', 'NW-1004', 'priya.nair@example.com', '', '31 Cedar Close', 'Bristol', 'BS1 5GH', 'DIGITAL'],
+  ['Mr', 'Thomas', 'Boyle', '', 'NW-1005', '', '', '5 Birch Way', 'Glasgow', 'G1 2JK', 'POST'],
+  ['Miss', 'Ava', 'Lindqvist', '', 'NW-1006', 'ava.l@example.com', '+447700900006', '19 Willow Court', 'Cardiff', 'CF10 1LM', 'SMS'],
+  ['Mr', 'Daniel', 'Osei', '', 'NW-1007', '', '', '44 Ash Grove', 'Sheffield', 'S1 2NO', 'POST'],
+  ['Mrs', 'Helen', 'Marsh', '', 'NW-1008', '', '', '2 Rowan Terrace', 'Newcastle', 'NE1 4PQ', 'POST'],
+  ['Mr', 'Kofi', 'Mensah', '', 'NW-1009', 'kofi.mensah@example.com', '+447700900009', '8 Hazel Lane', 'Nottingham', 'NG1 5RS', 'SMS'],
+  ['Ms', 'Grace', 'Fletcher', '', 'NW-1010', '', '', '27 Sycamore Drive', 'Liverpool', 'L1 6TU', 'POST'],
 ]
 
 const README = `MAIL-IQ — OUTBOUND CAMPAIGN DEMO PACK
@@ -121,7 +121,18 @@ Files
   branch-opening-letter.pdf   Base letter for the mailshot
   new-branch-map.pdf          Insert (the map) to attach
   members-ballot-paper.pdf    Base ballot for the closed-loop (QR return) demo
-  campaign-recipients.csv     10 recipients: 4 DIGITAL, 4 POST, 2 AUTO
+  campaign-recipients.csv     10 recipients: 3 DIGITAL · 1 AUTO · 4 POST · 2 SMS (with phones)
+
+TWO WAYS TO BUILD A CAMPAIGN
+  • Upload a PDF   – overlay each recipient's address + QR on a ready-made letter
+                     (must be a blank template — see the warning above).
+  • Compose a letter – type the body with tokens ({firstName}, {account}, {postcode}…)
+                       and Mail-IQ renders a personalised letter per recipient (field-merge).
+
+SMS
+  Recipients set to SMS get a text with their portal link (needs Twilio configured:
+  TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM). Without it, they still route as
+  'SMS' and you can open their portal from the campaign dashboard.
 
 BASE DOCUMENT — IMPORTANT
   The campaign base must be a BLANK TEMPLATE: a generic salutation ("Dear Customer

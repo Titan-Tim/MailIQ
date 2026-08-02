@@ -84,6 +84,7 @@ enum DeliveryMethod {
   DIGITAL
   POST
   AUTO
+  SMS
 }
 
 model Recipient {
@@ -104,6 +105,7 @@ model Recipient {
   postcode      String?
   country       String         @default("GB")
   email         String?
+  phone         String?
   deliveryMethod DeliveryMethod @default(AUTO)
   isActive      Boolean        @default(true)
   createdAt     DateTime       @default(now())
@@ -216,8 +218,11 @@ model Campaign {
   tenantId     String
   tenant       Tenant         @relation(fields: [tenantId], references: [id])
   name         String
-  baseFileKey  String
-  baseFileName String
+  baseFileKey  String?        // an uploaded base PDF (upload mode)…
+  baseFileName String?
+  bodyTemplate String?        // …OR a letter template with {tokens} (compose mode)
+  heading      String?        // optional bold heading line under the salutation
+  signOff      String?        // e.g. "Sam Rivera\nStore Manager"
   subject      String?        // email subject for digital recipients
   addQr        Boolean        @default(true) // stamp a unique return QR on each copy
   status       CampaignStatus @default(DRAFT)

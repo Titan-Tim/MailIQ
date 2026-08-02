@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, apiUpload } from '@/lib/api'
-import { Megaphone, Plus, X, Loader2, Upload, Trash2, Send, Printer, CheckCircle2, QrCode } from 'lucide-react'
+import { Megaphone, Plus, X, Loader2, Upload, Trash2, Send, Printer, CheckCircle2, QrCode, FileText, PenLine, Smartphone } from 'lucide-react'
 
 const STATUS = { DRAFT: 'bg-gray-100 text-gray-600', SENDING: 'bg-blue-100 text-blue-700', SENT: 'bg-emerald-100 text-emerald-700' } as Record<string, string>
 
@@ -68,7 +68,11 @@ export default function CampaignsPage() {
 }
 
 function NewCampaign({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [mode, setMode] = useState<'upload' | 'letter'>('upload')
   const [file, setFile] = useState<File | null>(null)
+  const [body, setBody] = useState('')
+  const [heading, setHeading] = useState('')
+  const [signOff, setSignOff] = useState('')
   const [name, setName] = useState('')
   const [subject, setSubject] = useState('')
   const [addQr, setAddQr] = useState(true)
@@ -92,11 +96,13 @@ function NewCampaign({ onClose, onDone }: { onClose: () => void; onDone: () => v
   }
 
   async function createAndSend() {
-    if (!file) { setError('Choose the base document (PDF)'); return }
+    if (mode === 'upload' && !file) { setError('Choose the base document (PDF)'); return }
+    if (mode === 'letter' && !body.trim()) { setError('Write the letter body'); return }
     setBusy(true); setError('')
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      if (mode === 'upload') { fd.append('file', file as File) }
+      else { fd.append('bodyTemplate', body); if (heading) fd.append('heading', heading); if (signOff) fd.append('signOff', signOff) }
       if (name) fd.append('name', name)
       if (subject) fd.append('subject', subject)
       fd.append('addQr', String(addQr))
@@ -117,21 +123,40 @@ function NewCampaign({ onClose, onDone }: { onClose: () => void; onDone: () => v
         {summary ? (
           <div className="p-5 space-y-3">
             <div className="flex items-center gap-2 text-emerald-700"><CheckCircle2 size={18} /><span className="font-medium">Campaign sent</span></div>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="bg-emerald-50 rounded-lg p-3"><p className="text-2xl font-bold text-emerald-700">{summary.digital}</p><p className="text-xs text-gray-500 flex items-center justify-center gap-1"><Send size={11} /> emailed</p></div>
-              <div className="bg-violet-50 rounded-lg p-3"><p className="text-2xl font-bold text-violet-700">{summary.post}</p><p className="text-xs text-gray-500 flex items-center justify-center gap-1"><Printer size={11} /> to print</p></div>
-              <div className="bg-gray-50 rounded-lg p-3"><p className={`text-2xl font-bold ${summary.failed ? 'text-red-600' : 'text-gray-400'}`}>{summary.failed}</p><p className="text-xs text-gray-500">failed</p></div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="bg-emerald-50 rounded-lg p-3"><p className="text-2xl font-bold text-emerald-700">{summary.digital}</p><p className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><Send size={11} /> emailed</p></div>
+              <div className="bg-sky-50 rounded-lg p-3"><p className="text-2xl font-bold text-sky-700">{summary.sms || 0}</p><p className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><Smartphone size={11} /> texted</p></div>
+              <div className="bg-violet-50 rounded-lg p-3"><p className="text-2xl font-bold text-violet-700">{summary.post}</p><p className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><Printer size={11} /> to print</p></div>
+              <div className="bg-gray-50 rounded-lg p-3"><p className={`text-2xl font-bold ${summary.failed ? 'text-red-600' : 'text-gray-400'}`}>{summary.failed}</p><p className="text-[11px] text-gray-500">failed</p></div>
             </div>
             <p className="text-xs text-gray-500">Postal copies are waiting in the <strong>Print Queue</strong>; emailed copies are in <strong>Digital Sent</strong>.</p>
             <div className="flex justify-end"><button onClick={onDone} className="bg-violet-700 hover:bg-violet-800 text-white text-sm font-medium px-4 py-2 rounded-lg">Done</button></div>
           </div>
         ) : (
           <div className="p-5 space-y-4">
-            <label className="flex items-center gap-3 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-violet-400 transition-colors">
-              <Upload size={18} className="text-violet-600 shrink-0" />
-              <span className={`text-sm truncate ${file ? 'text-gray-800' : 'text-gray-500'}`}>{file ? file.name : 'Choose the base document (PDF)&hellip;'}</span>
-              <input type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f && !name) setName(f.name.replace(/\.pdf$/i, '')) }} />
-            </label>
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <button onClick={() => setMode('upload')} className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-md transition-colors ${mode === 'upload' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><FileText size={13} /> Upload a PDF</button>
+              <button onClick={() => setMode('letter')} className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-md transition-colors ${mode === 'letter' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><PenLine size={13} /> Compose a letter</button>
+            </div>
+
+            {mode === 'upload' ? (
+              <label className="flex items-center gap-3 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-violet-400 transition-colors">
+                <Upload size={18} className="text-violet-600 shrink-0" />
+                <span className={`text-sm truncate ${file ? 'text-gray-800' : 'text-gray-500'}`}>{file ? file.name : 'Choose the base document (PDF)&hellip;'}</span>
+                <input type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setFile(f); if (f && !name) setName(f.name.replace(/\.pdf$/i, '')) }} />
+              </label>
+            ) : (
+              <div className="space-y-3">
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Heading (optional) — e.g. We&rsquo;re opening a new branch!" value={heading} onChange={(e) => setHeading(e.target.value)} />
+                <div>
+                  <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500 resize-none font-[inherit]" rows={7}
+                    placeholder={"Write the letter body. Use {firstName}, {lastName}, {company}, {account}, {postcode}, {date} to personalise each copy.\n\ne.g. Thank you for banking with us, {firstName}. Your account {account} is due for review."}
+                    value={body} onChange={(e) => setBody(e.target.value)} />
+                  <p className="text-[11px] text-gray-400 mt-1">A salutation (<code>Dear {'{firstName}'},</code>) and sign-off are added automatically. Tokens: <code>{'{firstName}'}</code> <code>{'{lastName}'}</code> <code>{'{company}'}</code> <code>{'{account}'}</code> <code>{'{postcode}'}</code> <code>{'{date}'}</code>.</p>
+                </div>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-violet-500" placeholder="Sign-off (optional) — e.g. Sam Rivera, Store Manager" value={signOff} onChange={(e) => setSignOff(e.target.value)} />
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-medium text-gray-600">Campaign name</label>

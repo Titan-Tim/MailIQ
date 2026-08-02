@@ -13,7 +13,9 @@ const { PDFDocument } = require('pdf-lib')
 const prisma = require('../db')
 const storage = require('../services/storage')
 const composer = require('../services/composer')
+const { renderLetter } = require('../services/letter-renderer')
 const { sendDispatchEmail } = require('../services/email')
+const { sendSms } = require('../services/sms')
 const { requireAuth, requireModule } = require('../middleware/auth')
 
 const upload = multer({
@@ -37,6 +39,7 @@ async function uniqueBarcodeCode() {
 }
 function resolveDeliveryMethod(recipient) {
   if (!recipient) return 'POST'
+  if (recipient.deliveryMethod === 'SMS') return recipient.phone ? 'SMS' : (recipient.email ? 'DIGITAL' : 'POST')
   if (recipient.deliveryMethod === 'DIGITAL') return recipient.email ? 'DIGITAL' : 'POST'
   if (recipient.deliveryMethod === 'POST') return 'POST'
   return recipient.email ? 'DIGITAL' : 'POST' // AUTO
@@ -53,6 +56,7 @@ async function addToOpenBatch(tenantId, dispatch) {
 
 const shape = (c) => ({
   id: c.id, name: c.name, baseFileName: c.baseFileName, subject: c.subject, addQr: c.addQr,
+  mode: c.bodyTemplate ? 'letter' : 'upload',
   status: c.status, createdAt: c.createdAt, count: c._count?.dispatches,
 })
 
@@ -104,21 +108,26 @@ router.get('/:id', async (req, res) => {
   res.json(c)
 })
 
-// ── create (upload base document) ──────────────────────────────────────────────
+// ── create — either upload a base PDF, or compose a letter (field-merge) ────────
 router.post('/', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'PDF file required' })
-  const baseFileKey = await storage.saveFile(req.file.buffer, 'campaign')
-  const campaign = await prisma.campaign.create({
-    data: {
-      tenantId: req.user.tenantId,
-      name: (req.body.name || '').trim() || req.file.originalname.replace(/\.pdf$/i, ''),
-      baseFileKey,
-      baseFileName: req.file.originalname,
-      subject: (req.body.subject || '').trim() || null,
-      addQr: req.body.addQr !== 'false' && req.body.addQr !== false,
-    },
-    include: { _count: { select: { dispatches: true } } },
-  })
+  const body = (req.body.bodyTemplate || '').trim()
+  if (!req.file && !body) return res.status(400).json({ error: 'Upload a PDF or compose a letter body' })
+
+  const data = {
+    tenantId: req.user.tenantId,
+    name: (req.body.name || '').trim() || (req.file ? req.file.originalname.replace(/\.pdf$/i, '') : 'Campaign'),
+    subject: (req.body.subject || '').trim() || null,
+    addQr: req.body.addQr !== 'false' && req.body.addQr !== false,
+  }
+  if (req.file) {
+    data.baseFileKey = await storage.saveFile(req.file.buffer, 'campaign')
+    data.baseFileName = req.file.originalname
+  } else {
+    data.bodyTemplate = body
+    data.heading = (req.body.heading || '').trim() || null
+    data.signOff = (req.body.signOff || '').trim() || null
+  }
+  const campaign = await prisma.campaign.create({ data, include: { _count: { select: { dispatches: true } } } })
   res.status(201).json(shape(campaign))
 })
 
@@ -140,15 +149,25 @@ router.post('/:id/generate', async (req, res) => {
 
   await prisma.campaign.update({ where: { id: campaign.id }, data: { status: 'SENDING' } })
   const tenant = req.user.tenant
-  let digital = 0, post = 0, failed = 0
+  const portalBase = (process.env.PORTAL_URL || '').replace(/\/$/, '')
+  let digital = 0, sms = 0, post = 0, failed = 0
 
   for (const r of recipients) {
     try {
+      // Base document: a per-recipient merged letter (compose mode) or the shared uploaded PDF.
+      let baseKey = campaign.baseFileKey
+      let baseName = campaign.baseFileName || 'letter.pdf'
+      if (campaign.bodyTemplate) {
+        const letter = await renderLetter({ tenant, recipient: r, campaign })
+        baseKey = await storage.saveFile(letter, 'campaign-letter')
+        baseName = `${campaign.name}.pdf`
+      }
+
       const barcodeCode = await uniqueBarcodeCode()
       let dispatch = await prisma.dispatch.create({
         data: {
           tenantId: req.user.tenantId, campaignId: campaign.id, recipientId: r.id,
-          originalFileKey: campaign.baseFileKey, originalFileName: campaign.baseFileName,
+          originalFileKey: baseKey, originalFileName: baseName,
           fileSizeBytes: 0, barcodeCode, documentType: 'campaign', reference: campaign.name, status: 'COMPOSING',
         },
       })
@@ -175,6 +194,14 @@ router.post('/:id/generate', async (req, res) => {
         await prisma.dispatch.update({ where: { id: dispatch.id }, data: { status: sent ? 'SENT' : 'QUEUED', sentAt: sent ? new Date() : null } })
         if (sent) await prisma.digitalSend.update({ where: { id: ds.id }, data: { emailSent: true, emailSentAt: new Date() } })
         digital++
+      } else if (method === 'SMS') {
+        const ds = await prisma.digitalSend.create({
+          data: { dispatchId: dispatch.id, toEmail: r.email || `sms:${r.phone}`, subject: campaign.subject || `Your document from ${tenant.name}` },
+        })
+        const link = portalBase ? `${portalBase}/p/${ds.trackingToken}` : ''
+        const sent = await sendSms(r.phone, `${tenant.name}: your document is ready.${link ? ' ' + link : ''}`)
+        await prisma.dispatch.update({ where: { id: dispatch.id }, data: { status: sent ? 'SENT' : 'QUEUED', sentAt: sent ? new Date() : null } })
+        sms++
       } else {
         await addToOpenBatch(req.user.tenantId, dispatch)
         await prisma.dispatch.update({ where: { id: dispatch.id }, data: { status: 'QUEUED', deliveryMethod: 'POST' } })
@@ -190,7 +217,7 @@ router.post('/:id/generate', async (req, res) => {
     where: { id: campaign.id }, data: { status: 'SENT' },
     include: { _count: { select: { dispatches: true } } },
   })
-  res.json({ campaign: shape(updated), summary: { total: recipients.length, digital, post, failed } })
+  res.json({ campaign: shape(updated), summary: { total: recipients.length, digital, sms, post, failed } })
 })
 
 // ── delete (campaign + its dispatches + files) ─────────────────────────────────

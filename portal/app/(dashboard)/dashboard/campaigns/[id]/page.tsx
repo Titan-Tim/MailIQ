@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
-import { ArrowLeft, Megaphone, Send, Printer, MailOpen, Undo2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Megaphone, Send, Printer, Undo2, ExternalLink, Smartphone } from 'lucide-react'
 
 const STATUS = {
   SENT: 'bg-emerald-100 text-emerald-700', QUEUED: 'bg-violet-100 text-violet-700',
@@ -25,8 +25,8 @@ export default function CampaignDetail() {
 
   const items = c.dispatches || []
   const digital = items.filter((d: any) => d.deliveryMethod === 'DIGITAL').length
+  const smsCount = items.filter((d: any) => d.deliveryMethod === 'SMS').length
   const post = items.filter((d: any) => d.deliveryMethod === 'POST').length
-  const opened = items.filter((d: any) => d.digitalSend?.firstOpenedAt).length
   const returned = items.filter((d: any) => d.returnedAt).length
 
   return (
@@ -44,8 +44,8 @@ export default function CampaignDetail() {
       <div className="grid grid-cols-5 gap-4 mb-6">
         <Stat label="Recipients" value={items.length} />
         <Stat label="Emailed" value={digital} icon={Send} color="text-emerald-600" />
+        <Stat label="Texted" value={smsCount} icon={Smartphone} color="text-sky-600" />
         <Stat label="To print" value={post} icon={Printer} color="text-violet-600" />
-        <Stat label="Opened" value={opened} icon={MailOpen} color="text-blue-600" />
         <Stat label="Returned" value={returned} icon={Undo2} color="text-amber-600" />
       </div>
 
@@ -70,7 +70,7 @@ export default function CampaignDetail() {
               )}
               {d.returnedAt && <span className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1"><Undo2 size={10} /> {d.returnedVia === 'PORTAL' ? 'uploaded' : 'returned'}</span>}
               {d.digitalSend?.firstOpenedAt && !d.returnedAt && <span className="text-xs text-blue-600 font-medium">opened</span>}
-              <span className="text-xs text-gray-500 flex items-center gap-1">{d.deliveryMethod === 'DIGITAL' ? <><Send size={11} /> email</> : <><Printer size={11} /> post</>}</span>
+              <span className="text-xs text-gray-500 flex items-center gap-1">{d.deliveryMethod === 'DIGITAL' ? <><Send size={11} /> email</> : d.deliveryMethod === 'SMS' ? <><Smartphone size={11} /> sms</> : <><Printer size={11} /> post</>}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS[d.status] || 'bg-gray-100 text-gray-600'}`}>{d.status}</span>
             </div>
           ))}
