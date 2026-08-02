@@ -94,7 +94,7 @@ router.get('/:id', async (req, res) => {
         orderBy: { createdAt: 'asc' },
         include: {
           recipient: { select: { firstName: true, lastName: true, email: true, accountNumber: true } },
-          digitalSend: { select: { emailSent: true, firstOpenedAt: true, openCount: true } },
+          digitalSend: { select: { emailSent: true, firstOpenedAt: true, openCount: true, trackingToken: true } },
           portalUploads: { select: { id: true, fileName: true, uploadedAt: true }, orderBy: { uploadedAt: 'asc' } },
         },
       },

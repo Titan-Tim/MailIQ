@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiFetch } from '@/lib/api'
-import { ArrowLeft, Megaphone, Send, Printer, MailOpen, Undo2 } from 'lucide-react'
+import { ArrowLeft, Megaphone, Send, Printer, MailOpen, Undo2, ExternalLink } from 'lucide-react'
 
 const STATUS = {
   SENT: 'bg-emerald-100 text-emerald-700', QUEUED: 'bg-violet-100 text-violet-700',
@@ -63,6 +63,11 @@ export default function CampaignDetail() {
               {(d.portalUploads || []).map((u: any) => (
                 <a key={u.id} href={`${API}/api/campaigns/uploads/${u.id}/file?token=${token}`} className="text-xs text-violet-700 hover:underline max-w-[140px] truncate" title={`Download ${u.fileName}`}>{u.fileName}</a>
               ))}
+              {d.deliveryMethod === 'DIGITAL' && d.digitalSend?.trackingToken && (
+                <a href={`/p/${d.digitalSend.trackingToken}`} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-500 hover:text-violet-700 inline-flex items-center gap-0.5" title="Open the recipient portal">
+                  portal <ExternalLink size={10} />
+                </a>
+              )}
               {d.returnedAt && <span className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1"><Undo2 size={10} /> {d.returnedVia === 'PORTAL' ? 'uploaded' : 'returned'}</span>}
               {d.digitalSend?.firstOpenedAt && !d.returnedAt && <span className="text-xs text-blue-600 font-medium">opened</span>}
               <span className="text-xs text-gray-500 flex items-center gap-1">{d.deliveryMethod === 'DIGITAL' ? <><Send size={11} /> email</> : <><Printer size={11} /> post</>}</span>
