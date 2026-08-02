@@ -16,7 +16,11 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib')
 const OUT = 'C:\\Mail-IQ Demo Documents\\Outbound Campaign'
 const INK = rgb(0.12, 0.12, 0.14), GREY = rgb(0.42, 0.42, 0.46), LIGHT = rgb(0.9, 0.9, 0.93)
 const TEAL = rgb(0.06, 0.4, 0.38), NAVY = rgb(0.10, 0.20, 0.42)
-const A4 = [595.28, 841.89], M = 56
+const A4 = [595.28, 841.89], M = 56, MM = 2.8346
+// Campaign base docs must leave the window-envelope address zone (~45–90mm from
+// the top) BLANK — the composer overlays each recipient's address there. So the
+// body starts below it. Keep salutations generic ("Dear Customer / Member").
+const BODY_TOP = A4[1] - 96 * MM
 
 function dir() { fs.mkdirSync(OUT, { recursive: true }) }
 function save(name, bytes) { dir(); fs.writeFileSync(path.join(OUT, name), bytes); console.log('  ✓', name) }
@@ -28,8 +32,8 @@ function paras(page, font, bold, y, blocks) { const maxW = A4[0] - M * 2; for (c
 async function letter() {
   const { pdf, font, bold } = await newDoc()
   const page = pdf.addPage(A4)
-  let y = head(page, bold, font, 'Northwind Stores', 'Customer Services · Freepost NORTHWIND', TEAL)
-  y = paras(page, font, bold, y, [
+  head(page, bold, font, 'Northwind Stores', 'Customer Services · Freepost NORTHWIND', TEAL)
+  let y = paras(page, font, bold, BODY_TOP, [ // body starts below the address window
     { text: '2 December 2026', color: GREY, size: 10, gap: 14 },
     { text: 'Dear Customer,', gap: 12 },
     { text: 'We’re opening a new branch!', bold: true, size: 13, gap: 10 },
@@ -75,8 +79,8 @@ async function ballot() {
   const { pdf, font, bold } = await newDoc()
   const page = pdf.addPage(A4)
   const { width, height } = page.getSize()
-  let y = head(page, bold, font, 'United Members Union', 'Official Ballot 2026 · Confidential', NAVY)
-  y = paras(page, font, bold, y, [
+  head(page, bold, font, 'United Members Union', 'Official Ballot 2026 · Confidential', NAVY)
+  let y = paras(page, font, bold, BODY_TOP, [ // body starts below the address window
     { text: 'MEMBERS’ BALLOT — 2026 PAY OFFER', bold: true, size: 14, gap: 12 },
     { text: 'This ballot paper is issued to you as a member. Please mark ONE box below, then return the completed paper in the enclosed envelope. Your response is confidential; the QR code is used only to confirm your ballot has been received and to prevent duplicate returns.' },
   ])
@@ -118,6 +122,14 @@ Files
   new-branch-map.pdf          Insert (the map) to attach
   members-ballot-paper.pdf    Base ballot for the closed-loop (QR return) demo
   campaign-recipients.csv     10 recipients: 4 DIGITAL, 4 POST, 2 AUTO
+
+BASE DOCUMENT — IMPORTANT
+  The campaign base must be a BLANK TEMPLATE: a generic salutation ("Dear Customer
+  / Member") and the top-left address window left CLEAR. Mail-IQ overlays each
+  recipient's address into that window. Do NOT use a letter that already has a
+  name/address baked in (e.g. the old invitation-open-evening.pdf) — the overlay
+  will collide with it. branch-opening-letter.pdf and members-ballot-paper.pdf are
+  built correctly.
 
 END-TO-END DEMO RUNBOUND
   1. Recipients → Import CSV → campaign-recipients.csv  (10 people, mixed preferences)
