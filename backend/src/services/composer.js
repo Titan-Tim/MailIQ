@@ -22,6 +22,12 @@ const A4_H = 841.89 // A4 height in points
 // data, just the code that maps to the dispatch in the database.
 const ITEM_QR_PREFIX = 'MAILIQ:ITEM:v1:'
 function itemQrText(barcodeCode) { return ITEM_QR_PREFIX + barcodeCode }
+// Extract the dispatch code from a scanned item-QR string, or null if it isn't one.
+function parseItemToken(text) {
+  if (!text) return null
+  const m = String(text).match(/MAILIQ:ITEM:v1:([A-Za-z0-9-]+)/)
+  return m ? m[1] : null
+}
 
 async function generateQrPng(text) {
   return QRCode.toBuffer(text, { type: 'png', errorCorrectionLevel: 'M', margin: 1, scale: 6 })
@@ -197,4 +203,4 @@ async function mergePdfs(fileKeys) {
   return Buffer.from(await merged.save())
 }
 
-module.exports = { composeDispatch, mergePdfs, itemQrText, ITEM_QR_PREFIX }
+module.exports = { composeDispatch, mergePdfs, itemQrText, parseItemToken, ITEM_QR_PREFIX }

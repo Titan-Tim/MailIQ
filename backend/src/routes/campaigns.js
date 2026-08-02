@@ -63,7 +63,14 @@ router.get('/', async (req, res) => {
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { dispatches: true } } },
   })
-  res.json({ campaigns: campaigns.map(shape) })
+  // Returned counts per campaign (closed loop).
+  const grouped = await prisma.dispatch.groupBy({
+    by: ['campaignId'],
+    where: { tenantId: req.user.tenantId, campaignId: { not: null }, returnedAt: { not: null } },
+    _count: { _all: true },
+  })
+  const returnedMap = Object.fromEntries(grouped.map((g) => [g.campaignId, g._count._all]))
+  res.json({ campaigns: campaigns.map((c) => ({ ...shape(c), returned: returnedMap[c.id] || 0 })) })
 })
 
 // ── detail (with per-recipient breakdown) ──────────────────────────────────────

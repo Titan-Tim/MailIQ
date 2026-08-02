@@ -190,6 +190,8 @@ model Dispatch {
   status           DispatchStatus @default(PENDING)
   deliveryMethod   DeliveryMethod?
   errorMessage     String?
+  returnedAt       DateTime?      // closed loop: when its QR came back through inbound
+  returnedVia      String?        // SCAN | PORTAL
   uploadedAt       DateTime       @default(now())
   composedAt       DateTime?
   sentAt           DateTime?

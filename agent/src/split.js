@@ -10,9 +10,11 @@ import jsQR from 'jsqr'
 import { PDFDocument } from 'pdf-lib'
 
 export const SEPARATOR_TOKEN = 'MAILIQ:SEPARATOR:V1'
+export const ITEM_TOKEN_PREFIX = 'MAILIQ:ITEM:v1:'
 
 // Rasterise and detect page-by-page. IMPORTANT: getPixels() is a view into WASM
 // memory reused on the next page, so decode each page before rendering the next.
+// Each page is classified as a separator sheet and/or carrying a return item-QR.
 function detectSeparators(pdfBuffer, scale, token) {
   const doc = mupdf.Document.openDocument(new Uint8Array(pdfBuffer), 'application/pdf')
   const n = doc.countPages()
@@ -54,30 +56,41 @@ function hardened(rgba) {
   return out
 }
 
-function detect(rgba, width, height, token) {
+// Decode any QR on the page (normal then contrast-hardened), returning its data.
+function readQr(rgba, width, height) {
   let code = jsQR(rgba, width, height)
-  if (code && code.data && code.data.indexOf(token) !== -1) return { sep: true }
+  if (code && code.data) return code.data
   code = jsQR(hardened(rgba), width, height)
-  if (code && code.data && code.data.indexOf(token) !== -1) return { sep: true }
-  return { sep: false }
+  return code && code.data ? code.data : null
+}
+
+// Classify a page: is it a separator sheet, and/or does it carry a return item-QR?
+function detect(rgba, width, height, token) {
+  const data = readQr(rgba, width, height)
+  if (!data) return { sep: false, itemToken: null }
+  if (data.indexOf(token) !== -1) return { sep: true, itemToken: null }
+  const m = data.match(/MAILIQ:ITEM:v1:[A-Za-z0-9-]+/)
+  return { sep: false, itemToken: m ? m[0] : null }
 }
 
 function groupIntoItems(pageFlags) {
   const items = []
   const warnings = []
   let current = []
+  let currentToken = null
   let prevWasSep = false
   pageFlags.forEach((f, idx) => {
     if (f.sep) {
-      if (current.length) { items.push(current); current = [] }
+      if (current.length) { items.push({ idxs: current, itemToken: currentToken }); current = []; currentToken = null }
       else if (prevWasSep) warnings.push(`empty section between separators near page ${idx + 1}`)
       prevWasSep = true
     } else {
       current.push(idx)
+      if (!currentToken && f.itemToken) currentToken = f.itemToken // first item-QR in the document wins
       prevWasSep = false
     }
   })
-  if (current.length) items.push(current)
+  if (current.length) items.push({ idxs: current, itemToken: currentToken })
   return { items, warnings }
 }
 
@@ -91,11 +104,11 @@ export async function splitBatch(pdfBuffer, scale = 2.5) {
 
   const src = await PDFDocument.load(pdfBuffer)
   const docs = []
-  for (const idxs of items) {
+  for (const { idxs, itemToken } of items) {
     const out = await PDFDocument.create()
     const copied = await out.copyPages(src, idxs)
     copied.forEach((pg) => out.addPage(pg))
-    docs.push({ buffer: Buffer.from(await out.save()), pageCount: idxs.length })
+    docs.push({ buffer: Buffer.from(await out.save()), pageCount: idxs.length, itemToken })
   }
   return { docs, warnings, pageCount: flags.length, separatorCount: flags.filter((f) => f.sep).length }
 }

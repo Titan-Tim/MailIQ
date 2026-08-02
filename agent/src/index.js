@@ -28,9 +28,10 @@ async function ping() {
   return j.tenant
 }
 
-async function uploadDoc(buffer, filename) {
+async function uploadDoc(buffer, filename, itemToken) {
   const fd = new FormData()
   fd.append('file', new Blob([buffer], { type: 'application/pdf' }), filename)
+  if (itemToken) fd.append('itemToken', itemToken) // closed-loop return match
   const res = await fetch(`${cfg.apiUrl}/api/ingest`, {
     method: 'POST',
     headers: { 'X-Ingest-Key': cfg.ingestKey },
@@ -78,8 +79,9 @@ async function processBatch(filePath) {
     for (const doc of docs) {
       n++
       const docName = docs.length > 1 ? name.replace(/\.pdf$/i, '') + `-doc${n}.pdf` : name
-      const r = await uploadDoc(doc.buffer, docName)
+      const r = await uploadDoc(doc.buffer, docName, doc.itemToken)
       log(`  ✓ uploaded ${docName} → ${r.status}${r.mailbox ? ` (${r.documentType} → ${r.mailbox})` : ` (${r.documentType || 'unclassified'})`}`)
+      if (r.returned) log(`    ↩ return registered: ${r.returned.recipient}${r.returned.campaign ? ` — ${r.returned.campaign}` : ''}`)
 
       // Filing/forwarding: write the document to the folder mapped to its target
       // (e.g. proclaim → case-management, invoice-iq → AP automation hot folder).

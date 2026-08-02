@@ -7,8 +7,9 @@
 const router = require('express').Router()
 const multer = require('multer')
 const prisma = require('../db')
-const { createAndProcess } = require('../services/inbound-pipeline')
+const { createAndProcess, logEvent } = require('../services/inbound-pipeline')
 const { getLicence } = require('../services/licence')
+const { markReturnedByToken } = require('../services/mail-item')
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } })
 
@@ -42,6 +43,21 @@ router.post('/', requireIngestKey, upload.single('file'), async (req, res) => {
       source: 'scan-folder',
       actor: 'scan-agent',
     })
+
+    // Closed loop: if this returned document carries a campaign item-QR, mark the
+    // originating dispatch as returned and note it on the inbound item's history.
+    let returned = null
+    if (req.body.itemToken) {
+      try {
+        const d = await markReturnedByToken(req.tenant.id, req.body.itemToken, 'SCAN')
+        if (d) {
+          const who = [d.recipient?.firstName, d.recipient?.lastName].filter(Boolean).join(' ') || d.recipient?.email || d.barcodeCode
+          returned = { recipient: who, campaign: d.campaign?.name || null, ref: d.barcodeCode }
+          await logEvent(item.id, 'RETURN', `Matched return from ${who}${d.campaign ? ` (campaign "${d.campaign.name}")` : ''}`, 'scan-agent')
+        }
+      } catch (e) { console.error('[ingest] return match failed:', e.message) }
+    }
+
     res.status(201).json({
       id: item.id,
       fileName: item.fileName,
@@ -51,6 +67,7 @@ router.post('/', requireIngestKey, upload.single('file'), async (req, res) => {
       routingReason: item.routingReason,
       // If a case number was identified, tell the agent how to file it.
       export: item.exportFilename ? { filename: item.exportFilename, target: item.exportTarget, ref: item.exportRef } : null,
+      returned,
     })
   } catch (e) {
     console.error('[ingest]', e)

@@ -51,7 +51,7 @@ export default function CampaignsPage() {
                 <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center shrink-0"><Megaphone size={15} className="text-violet-600" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{c.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{c.baseFileName} · {c.count || 0} recipient{c.count === 1 ? '' : 's'}{c.addQr ? ' · QR' : ''}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{c.baseFileName} · {c.count || 0} recipient{c.count === 1 ? '' : 's'}{c.addQr ? ' · QR' : ''}{c.returned ? ` · ${c.returned} returned` : ''}</p>
                 </div>
                 <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS[c.status] || ''}`}>{c.status}</span>
