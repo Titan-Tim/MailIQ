@@ -17,6 +17,7 @@ const teamsRouter     = require('./routes/teams')
 const ingestRouter    = require('./routes/ingest')
 const platformRouter  = require('./routes/platform')
 const campaignRouter  = require('./routes/campaigns')
+const portalPublicRouter = require('./routes/portal-public')
 
 const app = express()
 
@@ -45,8 +46,9 @@ app.use('/api/ingest',     ingestRouter)
 app.use('/api/platform',   platformRouter)
 app.use('/api/campaigns',  campaignRouter)
 
-// Public tracking route (no auth — recipient-facing)
+// Public recipient-facing routes (no auth — token-gated)
 app.use('/api/track', trackRouter)
+app.use('/api/portal', portalPublicRouter)
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))

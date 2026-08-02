@@ -10,10 +10,13 @@ const STATUS = {
   READY: 'bg-blue-100 text-blue-700', FAILED: 'bg-red-100 text-red-800', PENDING: 'bg-amber-100 text-amber-700',
 } as Record<string, string>
 
+const API = process.env.NEXT_PUBLIC_API_URL || ''
+
 export default function CampaignDetail() {
   const { id } = useParams<{ id: string }>()
   const [c, setC] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : ''
 
   useEffect(() => { apiFetch(`/api/campaigns/${id}`).then((d) => { setC(d); setLoading(false) }).catch(() => setLoading(false)) }, [id])
 
@@ -50,16 +53,21 @@ export default function CampaignDetail() {
         <div className="px-5 py-4 border-b border-gray-100"><h2 className="font-semibold text-gray-800">Recipients</h2></div>
         <div className="divide-y divide-gray-100">
           {items.map((d: any) => (
-            <Link key={d.id} href={`/dashboard/inbox/${d.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{[d.recipient?.firstName, d.recipient?.lastName].filter(Boolean).join(' ') || d.recipient?.email || '— no recipient'}</p>
-                <p className="text-xs text-gray-400">{d.recipient?.accountNumber || d.recipient?.email || ''} · {d.barcodeCode}</p>
-              </div>
-              {d.returnedAt && <span className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1"><Undo2 size={10} /> returned</span>}
+            <div key={d.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+              <Link href={`/dashboard/inbox/${d.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{[d.recipient?.firstName, d.recipient?.lastName].filter(Boolean).join(' ') || d.recipient?.email || '— no recipient'}</p>
+                  <p className="text-xs text-gray-400">{d.recipient?.accountNumber || d.recipient?.email || ''} · {d.barcodeCode}</p>
+                </div>
+              </Link>
+              {(d.portalUploads || []).map((u: any) => (
+                <a key={u.id} href={`${API}/api/campaigns/uploads/${u.id}/file?token=${token}`} className="text-xs text-violet-700 hover:underline max-w-[140px] truncate" title={`Download ${u.fileName}`}>{u.fileName}</a>
+              ))}
+              {d.returnedAt && <span className="text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1"><Undo2 size={10} /> {d.returnedVia === 'PORTAL' ? 'uploaded' : 'returned'}</span>}
               {d.digitalSend?.firstOpenedAt && !d.returnedAt && <span className="text-xs text-blue-600 font-medium">opened</span>}
               <span className="text-xs text-gray-500 flex items-center gap-1">{d.deliveryMethod === 'DIGITAL' ? <><Send size={11} /> email</> : <><Printer size={11} /> post</>}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS[d.status] || 'bg-gray-100 text-gray-600'}`}>{d.status}</span>
-            </Link>
+            </div>
           ))}
         </div>
       </div>

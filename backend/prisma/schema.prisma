@@ -202,6 +202,7 @@ model Dispatch {
   digitalSend    DigitalSend?
   printBatchItem PrintBatchItem?
   returnMail     ReturnMail?
+  portalUploads  PortalUpload[]
 
   @@index([tenantId, status])
   @@index([barcodeCode])
@@ -232,6 +233,19 @@ enum CampaignStatus {
   DRAFT
   SENDING
   SENT
+}
+
+// A file a recipient uploaded back through their portal link (closed loop, digital).
+model PortalUpload {
+  id            String   @id @default(cuid())
+  dispatchId    String
+  dispatch      Dispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+  fileKey       String
+  fileName      String
+  fileSizeBytes Int      @default(0)
+  uploadedAt    DateTime @default(now())
+
+  @@index([dispatchId])
 }
 
 model DispatchInsert {

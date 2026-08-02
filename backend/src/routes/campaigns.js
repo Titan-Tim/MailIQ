@@ -73,6 +73,18 @@ router.get('/', async (req, res) => {
   res.json({ campaigns: campaigns.map((c) => ({ ...shape(c), returned: returnedMap[c.id] || 0 })) })
 })
 
+// ── download a recipient's portal upload (staff) ───────────────────────────────
+router.get('/uploads/:uploadId/file', async (req, res) => {
+  const up = await prisma.portalUpload.findUnique({ where: { id: req.params.uploadId }, include: { dispatch: { select: { tenantId: true } } } })
+  if (!up || up.dispatch.tenantId !== req.user.tenantId) return res.status(404).json({ error: 'Not found' })
+  try {
+    const buf = await storage.readFile(up.fileKey)
+    res.setHeader('Content-Type', 'application/octet-stream')
+    res.setHeader('Content-Disposition', `attachment; filename="${up.fileName.replace(/"/g, '')}"`)
+    res.send(buf)
+  } catch { res.status(404).json({ error: 'File not available' }) }
+})
+
 // ── detail (with per-recipient breakdown) ──────────────────────────────────────
 router.get('/:id', async (req, res) => {
   const c = await prisma.campaign.findFirst({
@@ -83,6 +95,7 @@ router.get('/:id', async (req, res) => {
         include: {
           recipient: { select: { firstName: true, lastName: true, email: true, accountNumber: true } },
           digitalSend: { select: { emailSent: true, firstOpenedAt: true, openCount: true } },
+          portalUploads: { select: { id: true, fileName: true, uploadedAt: true }, orderBy: { uploadedAt: 'asc' } },
         },
       },
     },

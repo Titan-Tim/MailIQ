@@ -51,7 +51,12 @@ async function deliver({ to, subject, html }) {
  * Uses a tracking link rather than an attachment so opens can be recorded.
  */
 async function sendDispatchEmail(dispatch, recipient, digitalSend, tenant) {
-  const trackingUrl = `${API_URL}/api/track/${digitalSend.trackingToken}`
+  // Link to the recipient portal (view + download + upload back). Falls back to
+  // the raw tracking URL if no portal URL is configured.
+  const portalBase = process.env.PORTAL_URL
+  const trackingUrl = portalBase
+    ? `${portalBase.replace(/\/$/, '')}/p/${digitalSend.trackingToken}`
+    : `${API_URL}/api/track/${digitalSend.trackingToken}`
   const recipientName = [recipient?.firstName, recipient?.lastName].filter(Boolean).join(' ') || 'Customer'
 
   const html = `
