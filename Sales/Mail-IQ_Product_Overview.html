@@ -1,0 +1,390 @@
+<title>Mail-IQ — Product Overview &amp; User Guide</title>
+<style>
+  :root{
+    --ground:#eceaf3; --panel:#ffffff; --ink:#1a1440; --body:#3a3552; --muted:#6b6786;
+    --line:#e0ddec; --accent:#7c3aed; --accent-ink:#6d28d9; --accent-soft:#efe9fb;
+    --radius:14px; --maxw:1080px;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --mono:"SFMono-Regular",ui-monospace,"Consolas","Menlo",monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --ground:#0d0b18; --panel:#171430; --ink:#eceaf6; --body:#bcb8d4; --muted:#8a86a6;
+      --line:#272248; --accent:#a78bfa; --accent-ink:#c4b5fd; --accent-soft:#251d47; }
+  }
+  :root[data-theme="light"]{ --ground:#eceaf3; --panel:#ffffff; --ink:#1a1440; --body:#3a3552; --muted:#6b6786; --line:#e0ddec; --accent:#7c3aed; --accent-ink:#6d28d9; --accent-soft:#efe9fb; }
+  :root[data-theme="dark"]{ --ground:#0d0b18; --panel:#171430; --ink:#eceaf6; --body:#bcb8d4; --muted:#8a86a6; --line:#272248; --accent:#a78bfa; --accent-ink:#c4b5fd; --accent-soft:#251d47; }
+
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{margin:0;background:var(--ground);color:var(--body);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  h1,h2,h3{color:var(--ink);text-wrap:balance;margin:0}
+  p{margin:0}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .slide{padding:56px 0;border-bottom:1px solid var(--line)}
+  .slide:last-child{border-bottom:0}
+  .eyebrow{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:14px}
+  .eyebrow .num{font-family:var(--mono);background:var(--accent);color:#fff;border-radius:6px;padding:2px 8px;letter-spacing:.05em}
+  .slide h2{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .dek{margin-top:12px;font-size:16px;max-width:64ch;color:var(--body)}
+
+  .split{display:grid;grid-template-columns:1.35fr .9fr;gap:34px;align-items:start;margin-top:30px}
+  @media(max-width:860px){.split{grid-template-columns:1fr}}
+
+  .legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+  .legend li{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
+  .bnum{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .legend b{color:var(--ink);font-weight:700}
+  .legend span{font-size:13.5px;color:var(--body)}
+
+  .screen{background:#fff;border:1px solid #ddd9e8;border-radius:12px;overflow:hidden;box-shadow:0 14px 34px -18px rgba(26,20,64,.4);color:#3a3552}
+  .sbar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f1eef7;border-bottom:1px solid #e4e0ee}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .url{margin-left:8px;background:#fff;border:1px solid #e0dcea;border-radius:20px;font-size:11px;color:#8b86a0;padding:3px 12px;font-family:var(--mono)}
+  .app{display:flex;min-height:340px}
+  .side{width:184px;flex-shrink:0;background:#2e1065;padding:14px 10px;color:#cfc6e6}
+  .brandmark{font-weight:800;font-size:16px;color:#fff;padding:6px 8px 12px;letter-spacing:-.01em}
+  .brandmark i{color:#c4b5fd;font-style:normal}
+  .modtog{display:flex;gap:3px;background:rgba(0,0,0,.25);border-radius:8px;padding:3px;margin:0 4px 12px}
+  .modtog span{flex:1;text-align:center;font-size:10px;font-weight:700;padding:4px 0;border-radius:5px;color:#a99ec9}
+  .modtog span.on{background:rgba(255,255,255,.16);color:#fff}
+  .nav-i{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:7px 9px;border-radius:7px;margin-bottom:2px;color:#b3a9cf}
+  .nav-i .ic{width:14px;height:14px;border:1.6px solid currentColor;border-radius:3px;flex-shrink:0;opacity:.8}
+  .nav-i.on{background:#7c3aed;color:#fff;font-weight:600}
+  .nav-i.on .ic{opacity:1}
+  .main{flex:1;background:#f7f6fb;padding:16px 18px;min-width:0}
+
+  .h-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .h-row h4{margin:0;color:#1a1440;font-size:16px;font-weight:800}
+  .stat{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+  @media(max-width:560px){.stat{grid-template-columns:repeat(2,1fr)}}
+  .card{background:#fff;border:1px solid #e8e5f0;border-radius:10px;padding:11px 12px}
+  .card .big{font-size:20px;font-weight:800;color:#1a1440;line-height:1}
+  .card .lbl{font-size:10.5px;color:#8b86a0;margin-top:5px}
+  .row{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e8e5f0;border-radius:9px;padding:10px 12px;margin-bottom:7px}
+  .row .nm{font-weight:700;color:#2a2440;font-size:13px}
+  .row .sub{font-size:11px;color:#8b86a0}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+  .p-ok{background:#dcfce7;color:#15803d}.p-violet{background:#efe9fb;color:#6d28d9}.p-blue{background:#e0f2fe;color:#0369a1}.p-amber{background:#fef3c7;color:#b45309}.p-grey{background:#eef1f4;color:#64748b}
+  .qr{width:38px;height:38px;border-radius:6px;background:
+      conic-gradient(from 0deg,#1a1440 0 25%,#fff 0 50%,#1a1440 0 75%,#fff 0)0 0/13px 13px,
+      #fff;border:2px solid #1a1440;flex-shrink:0}
+  .fieldgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .field label{display:block;font-size:11px;color:#4b4668;margin-bottom:4px;font-weight:600}
+  .field .inp{background:#fff;border:1px solid #d6d1e4;border-radius:7px;padding:7px 9px;font-size:12px;color:#1a1440}
+  .field .inp.ta{min-height:58px;color:#3a3552;line-height:1.5}
+  .field.full{grid-column:1/-1}
+  .tag{display:inline-flex;align-items:center;gap:6px;background:#efe9fb;border:1px solid #ddd0f7;color:#4a2b8f;border-radius:7px;padding:6px 10px;font-size:11.5px;font-weight:600}
+  .btn{background:#7c3aed;color:#fff;border-color:#7c3aed}
+  .b-inline{width:19px;height:19px;border-radius:50%;background:#7c3aed;color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+  table.mini{width:100%;border-collapse:collapse;font-size:12px}
+  table.mini th{text-align:left;color:#8b86a0;font-weight:600;font-size:10.5px;padding:6px 8px;background:#f2f0f7;border-bottom:1px solid #e8e5f0}
+  table.mini td{padding:8px;border-bottom:1px solid #f2f0f7;color:#3a3552}
+
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}
+  @media(max-width:760px){.pillars{grid-template-columns:1fr}}
+  .pillar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .pillar .k{width:34px;height:34px;border-radius:9px;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:12px;font-size:17px}
+  .pillar h3{font-size:15.5px;font-weight:800;margin-bottom:6px}
+  .pillar p{font-size:13.5px;color:var(--body)}
+
+  .portal{max-width:420px;background:#fff;border:1px solid #e8e5f0;border-radius:12px;overflow:hidden;box-shadow:0 10px 26px -16px rgba(26,20,64,.4);color:#3a3552}
+  .portal .phead{background:#0f766e;padding:16px 18px;color:#fff}
+  .portal .phead p{margin:0;color:#a7f3d0;font-size:11.5px}
+  .portal .phead h5{margin:2px 0 0;font-size:16px}
+  .portal .pbody{padding:20px 18px}
+  .portal .pbtn{display:block;text-align:center;background:#0f766e;color:#fff;font-size:13px;font-weight:700;padding:11px 20px;border-radius:8px}
+  .portal .drop{margin-top:16px;border-top:1px solid #eef1f4;padding-top:16px;text-align:center}
+  .portal .up{display:inline-block;border:1px solid #d6d1e4;color:#4b4668;font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:8px}
+
+  .cover{padding:76px 0 60px}
+  .cover .kicker{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink)}
+  .cover h1{font-size:60px;font-weight:800;letter-spacing:-.03em;line-height:.98;margin:16px 0 0}
+  .cover h1 i{color:var(--accent);font-style:normal}
+  .cover .tagline{display:block;font-size:21px;color:var(--ink);font-weight:600;margin-top:14px}
+  .cover .sub{font-size:16px;color:var(--body);max-width:62ch;margin-top:18px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .meta span{font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:6px 14px;color:var(--ink);font-weight:600}
+  .rule{height:4px;width:60px;background:var(--accent);border-radius:3px;margin-top:30px}
+
+  .callout-note{margin-top:26px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:16px 18px;font-size:14px;color:var(--body)}
+  .callout-note b{color:var(--ink)}
+  .foot{padding:34px 0;text-align:center;color:var(--muted);font-size:12.5px}
+
+  @page{size:210mm 297mm;margin:11mm}
+  @media print{
+    body{background:#fff}
+    .slide{break-before:page;break-inside:avoid;border-bottom:0;padding:14px 0}
+    .cover{padding:22px 0}
+    .slide h2{font-size:21px}
+    .dek{font-size:12.5px;margin-top:7px;max-width:none}
+    .split{grid-template-columns:1fr;margin-top:14px;gap:16px}
+    .pillars{grid-template-columns:repeat(3,1fr);margin-top:14px;gap:11px}
+    .pillar{padding:14px}
+    .legend{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+    .app{min-height:0}
+    .callout-note{margin-top:12px;padding:10px 13px;font-size:12px}
+    .cover h1{font-size:52px}
+    .screen,.pillar,.portal{box-shadow:none}
+  }
+  a{color:var(--accent-ink)}
+</style>
+
+<div class="wrap cover">
+  <div class="kicker">The digital mailroom — in and out</div>
+  <h1>Mail<i>-IQ</i></h1>
+  <span class="tagline">Scan the post in. Send personalised mail out. Always know what came back.</span>
+  <p class="sub">One platform for a whole organisation's mail. Inbound: scan the day's post once and it's split, classified, routed to the right person and filed into your systems. Outbound: turn one document into a personalised mailshot delivered by post, email or SMS — with a closed loop that tells you exactly who has responded.</p>
+  <div class="meta"><span>Product overview</span><span>User guide</span><span>Cloud &amp; on-premise</span><span>support@sol-iq.co.uk</span></div>
+  <div class="rule"></div>
+</div>
+
+<!-- 1. WHAT IT DOES -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">01</span> What it does</div>
+  <h2>Your mailroom, both directions, in one place</h2>
+  <p class="dek">Six things Mail-IQ does out of the box. Everything after this is a walk through the screens that deliver them and how you switch each one on.</p>
+  <div class="pillars">
+    <div class="pillar"><div class="k">▤</div><h3>Digital mailroom</h3><p>Scan a batch of incoming post once — Mail-IQ splits it at separator sheets, reads each document, classifies it, and routes it to the right mailbox.</p></div>
+    <div class="pillar"><div class="k">⤓</div><h3>Files into your systems</h3><p>Legal letters filed into Proclaim named by matter reference; invoices forwarded to your AP system — read off the document, no re-keying.</p></div>
+    <div class="pillar"><div class="k">◈</div><h3>Personalised campaigns</h3><p>One document → a personalised copy for every recipient, each addressed and stamped with a unique QR — a mailshot in one click.</p></div>
+    <div class="pillar"><div class="k">⇆</div><h3>Post, email &amp; SMS</h3><p>Each recipient is reached the way they prefer — a letter in the post, a tracked email, or a text with a secure link — decided from your data.</p></div>
+    <div class="pillar"><div class="k">↩</div><h3>Closed-loop returns</h3><p>When a document comes back — scanned in by post, or uploaded to the recipient portal — Mail-IQ registers who responded. Reconciliation, automatic.</p></div>
+    <div class="pillar"><div class="k">◑</div><h3>Cloud or on-premise</h3><p>Run it hosted, or entirely inside your own network for compliance — with a signed licence and per-module control.</p></div>
+  </div>
+</div></section>
+
+<!-- 2. INBOUND TRAY -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">02</span> Inbound &middot; the tray</div>
+  <h2>A morning's post, sorted before anyone touches it</h2>
+  <p class="dek">Scan the day's post as one file. Mail-IQ splits it into individual documents at the QR separator sheets, works out what each one is, and routes it to the right mailbox — the whole tray classified and delivered in seconds.</p>
+  <div class="split">
+    <div class="screen">
+      <div class="sbar"><span class="dot" style="background:#f2695b"></span><span class="dot" style="background:#f5bf4f"></span><span class="dot" style="background:#62c554"></span><span class="url">mail.sol-iq.co.uk/inbound</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="brandmark">Mail<i>-IQ</i></div>
+          <div class="modtog"><span class="on">Inbound</span><span>Outbound</span></div>
+          <div class="nav-i on"><span class="ic"></span>Inbound Tray</div>
+          <div class="nav-i"><span class="ic"></span>Triage Queue</div>
+          <div class="nav-i"><span class="ic"></span>Mailboxes</div>
+          <div class="nav-i"><span class="ic"></span>Routing Rules</div>
+          <div class="nav-i"><span class="ic"></span>Filing Rules</div>
+          <div class="nav-i"><span class="ic"></span>Scan Folder</div>
+        </div>
+        <div class="main">
+          <div class="h-row"><h4>Inbound Tray</h4></div>
+          <div class="stat">
+            <div class="card"><div class="big" style="color:#b45309">2</div><div class="lbl">In triage</div></div>
+            <div class="card"><div class="big" style="color:#15803d">12</div><div class="lbl">Delivered</div></div>
+            <div class="card"><div class="big">6</div><div class="lbl">Legal</div></div>
+            <div class="card"><div class="big">4</div><div class="lbl">Invoices</div></div>
+          </div>
+          <div class="row"><div><div class="nm">court-notice-of-hearing.pdf</div><div class="sub">legal &middot; to The Litigation Team</div></div><span class="pill p-violet">→ Legal</span></div>
+          <div class="row"><div><div class="nm">invoice-dx-secure-mail.pdf</div><div class="sub">invoice &middot; DX Secure Mail</div></div><span class="pill p-blue">→ Accounts</span></div>
+          <div class="row"><div><div class="nm">networking-invitation.pdf</div><div class="sub">general</div></div><span class="pill p-grey">→ Mailroom</span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>One scan in.</b> Staff scan the day's post into a hot folder; a small agent splits the batch at QR separator sheets — the only new step in the routine.</span></li>
+      <li><span class="bnum">2</span><span><b>Classified automatically.</b> Each document is read and typed — legal, invoice, statement, general — with genuinely scanned post handled by built-in OCR.</span></li>
+      <li><span class="bnum">3</span><span><b>Routed to a mailbox.</b> Rules send each document to the right team's mailbox; anything unrecognised waits safely in triage. People only see the post that's theirs.</span></li>
+    </ol>
+  </div>
+</div></section>
+
+<!-- 3. FILING RULES -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">03</span> Inbound &middot; filing rules</div>
+  <h2>Straight into Proclaim and your AP system, correctly named</h2>
+  <p class="dek">The real time-saver. A filing rule reads a reference off the document — a matter number, an invoice — and drops the correctly-named file into a watch folder your other systems already monitor. Case management and accounts payable, fed automatically.</p>
+  <div class="split">
+    <div class="screen">
+      <div class="sbar"><span class="dot" style="background:#f2695b"></span><span class="dot" style="background:#f5bf4f"></span><span class="dot" style="background:#62c554"></span><span class="url">mail.sol-iq.co.uk/inbound-export-rules</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="brandmark">Mail<i>-IQ</i></div>
+          <div class="modtog"><span class="on">Inbound</span><span>Outbound</span></div>
+          <div class="nav-i"><span class="ic"></span>Inbound Tray</div>
+          <div class="nav-i"><span class="ic"></span>Mailboxes</div>
+          <div class="nav-i"><span class="ic"></span>Routing Rules</div>
+          <div class="nav-i on"><span class="ic"></span>Filing Rules</div>
+        </div>
+        <div class="main">
+          <div class="h-row"><h4>Filing Rules</h4></div>
+          <div class="row"><div><div class="nm">Legal → Proclaim <span class="b-inline">1</span></div><div class="sub mono">type: legal &nbsp; BRN/####/#### → {ref}.pdf</div></div><span class="pill p-violet">Proclaim</span></div>
+          <div class="row"><div><div class="nm">Invoices → Invoice-IQ <span class="b-inline">2</span></div><div class="sub mono">type: invoice &nbsp; forward as-is</div></div><span class="pill p-blue">Invoice-IQ</span></div>
+          <div class="card" style="padding:14px;margin-top:10px">
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#1a1440;text-transform:uppercase;margin-bottom:10px">Add a filing rule</div>
+            <div class="fieldgrid">
+              <div class="field"><label>Applies to type</label><div class="inp">legal</div></div>
+              <div class="field"><label>Case-number format <span class="b-inline">3</span></label><div class="inp mono">BRN/####/####</div></div>
+              <div class="field"><label>Saved filename</label><div class="inp mono">{ref}.pdf</div></div>
+              <div class="field"><label>Target folder</label><div class="inp">Proclaim</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>Named by reference.</b> Mail-IQ finds the matter reference on a legal letter and files it as, say, <span class="mono">BRN-2024-0142.pdf</span> — ready for Proclaim to ingest.</span></li>
+      <li><span class="bnum">2</span><span><b>Forward mode.</b> Invoices need no reference — leave the format blank and they're forwarded straight to an Invoice-IQ hot folder for automated AP.</span></li>
+      <li><span class="bnum">3</span><span><b>Per-client formats.</b> Each client's reference pattern is typed once as a simple mask (<span class="mono">#</span> = a digit); the agent writes the file into whichever watch folder you map on that PC.</span></li>
+    </ol>
+  </div>
+</div></section>
+
+<!-- 4. CAMPAIGNS -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">04</span> Outbound &middot; campaigns</div>
+  <h2>One document, a personalised copy for everyone — by preference</h2>
+  <p class="dek">Upload a ready-made letter, or compose one with merge fields. Mail-IQ produces an individually-addressed copy for each recipient, attaches any enclosures, stamps a unique QR, and sends each one the way that person prefers — post, email or SMS.</p>
+  <div class="split">
+    <div class="screen">
+      <div class="sbar"><span class="dot" style="background:#f2695b"></span><span class="dot" style="background:#f5bf4f"></span><span class="dot" style="background:#62c554"></span><span class="url">mail.sol-iq.co.uk/campaigns</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="brandmark">Mail<i>-IQ</i></div>
+          <div class="modtog"><span>Inbound</span><span class="on">Outbound</span></div>
+          <div class="nav-i"><span class="ic"></span>Outbox</div>
+          <div class="nav-i on"><span class="ic"></span>Campaigns</div>
+          <div class="nav-i"><span class="ic"></span>Print Queue</div>
+          <div class="nav-i"><span class="ic"></span>Recipients</div>
+          <div class="nav-i"><span class="ic"></span>Insert Library</div>
+        </div>
+        <div class="main">
+          <div class="h-row"><h4>New campaign</h4></div>
+          <div class="card" style="padding:14px">
+            <div style="display:flex;gap:4px;background:#f2f0f7;border-radius:8px;padding:3px;margin-bottom:12px">
+              <span style="flex:1;text-align:center;font-size:11px;font-weight:700;color:#8b86a0;padding:5px">Upload a PDF</span>
+              <span style="flex:1;text-align:center;font-size:11px;font-weight:700;background:#fff;color:#6d28d9;border-radius:6px;padding:5px">Compose a letter <span class="b-inline">1</span></span>
+            </div>
+            <div class="field full"><label>Body</label><div class="inp ta">Thank you for banking with us, {firstName}. Your account {account} is due for its annual review this {date}…</div></div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="tag">☑ Add return QR <span class="b-inline">2</span></span>
+              <span class="tag">＋ Attach map insert</span>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:#6d28d9;background:#efe9fb;border-radius:7px;padding:7px 9px"><span class="b-inline">3</span> &nbsp;Will send to 10 recipients — 3 email, 2 SMS, 4 post, 1 auto.</div>
+            <div style="margin-top:10px"><span class="tag btn">Create &amp; send</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>Upload or compose.</b> Bring a finished PDF (address &amp; QR are overlaid), or type a letter with <span class="mono">{firstName}</span>, <span class="mono">{account}</span>, <span class="mono">{postcode}</span> tokens and Mail-IQ personalises the body for every recipient.</span></li>
+      <li><span class="bnum">2</span><span><b>Unique QR per copy.</b> Each letter carries its own QR — an opaque code, no personal data printed — so a returned document can be matched back to that exact recipient.</span></li>
+      <li><span class="bnum">3</span><span><b>Routed by preference.</b> Post, email or SMS is chosen from each recipient's record — one action, three channels, and a count of each before you send.</span></li>
+    </ol>
+  </div>
+</div></section>
+
+<!-- 5. RECIPIENT PORTAL -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">05</span> Outbound &middot; recipient portal</div>
+  <h2>Send it digitally — and let them send it back</h2>
+  <p class="dek">Recipients reached by email or SMS get a link to their own secure page — like an insurer sending your policy documents to a portal. They view and download what you sent, and upload a completed response straight back.</p>
+  <div class="split">
+    <div>
+      <div class="portal">
+        <div class="phead"><p>Northwind Stores</p><h5>Your document is ready</h5></div>
+        <div class="pbody">
+          <p style="font-size:12.5px;color:#6b6786;margin-bottom:14px">Hello Dana, your document is ready to view.</p>
+          <span class="pbtn">View &amp; download your document <span class="b-inline">1</span></span>
+          <div class="drop">
+            <div style="font-size:12.5px;font-weight:700;color:#1a1440;margin-bottom:3px">Respond</div>
+            <p style="font-size:11.5px;color:#6b6786;margin-bottom:10px">When you've completed it, upload it back here.</p>
+            <span class="up">Upload your completed document <span class="b-inline">2</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>Secure, per-recipient link.</b> A unique unguessable link — no login, no personal data in the address. It records when they opened and downloaded.</span></li>
+      <li><span class="bnum">2</span><span><b>Upload back.</b> The recipient returns a completed form digitally; it's stored against their record and marks them as responded — no printing, no posting.</span></li>
+      <li><span class="bnum">3</span><span><b>Sent by SMS or email.</b> The same portal is reached from a texted link or an email button — whichever channel the recipient prefers.</span></li>
+    </ol>
+  </div>
+</div></section>
+
+<!-- 6. CLOSED LOOP -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">06</span> The closed loop</div>
+  <h2>Know exactly who has responded — on paper or online</h2>
+  <p class="dek">The part that sets Mail-IQ apart. A returned document — a ballot, a form, a renewal — comes back either way: posted back and scanned through the inbound mailroom, or uploaded to the portal. Both land in the same place, so you can see at a glance who's replied and chase only who hasn't.</p>
+  <div class="split">
+    <div class="screen">
+      <div class="sbar"><span class="dot" style="background:#f2695b"></span><span class="dot" style="background:#f5bf4f"></span><span class="dot" style="background:#62c554"></span><span class="url">mail.sol-iq.co.uk/campaigns/…</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="brandmark">Mail<i>-IQ</i></div>
+          <div class="modtog"><span>Inbound</span><span class="on">Outbound</span></div>
+          <div class="nav-i on"><span class="ic"></span>Campaigns</div>
+          <div class="nav-i"><span class="ic"></span>Print Queue</div>
+          <div class="nav-i"><span class="ic"></span>Recipients</div>
+        </div>
+        <div class="main">
+          <div class="h-row"><h4>Members' Ballot 2026 <span class="qr" style="width:26px;height:26px"></span></h4></div>
+          <div class="stat" style="grid-template-columns:repeat(4,1fr)">
+            <div class="card"><div class="big">240</div><div class="lbl">Recipients</div></div>
+            <div class="card"><div class="big" style="color:#0369a1">86</div><div class="lbl">Texted</div></div>
+            <div class="card"><div class="big" style="color:#6d28d9">154</div><div class="lbl">To print</div></div>
+            <div class="card"><div class="big" style="color:#b45309">173</div><div class="lbl">Returned</div></div>
+          </div>
+          <div class="row"><div><div class="nm">Aki Member</div><div class="sub mono">MQ-8H2KPX</div></div><span class="pill p-amber">↩ returned</span></div>
+          <div class="row"><div><div class="nm">Dana Lee</div><div class="sub mono">MQ-4LZ9QT</div></div><span class="pill p-amber">↩ uploaded</span></div>
+          <div class="row"><div><div class="nm">Sam Rivera</div><div class="sub mono">MQ-1PB7MK</div></div><span class="pill p-grey">awaiting</span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>Posted back → scanned.</b> A returned ballot goes through the same inbound scanner; Mail-IQ reads its QR and marks that member as <b>returned</b> — no data entry.</span></li>
+      <li><span class="bnum">2</span><span><b>Online → uploaded.</b> A recipient who used the portal is marked <b>uploaded</b> — the same status, from the digital channel.</span></li>
+      <li><span class="bnum">3</span><span><b>One reconciliation.</b> Sent, delivered by each channel, and returned — all on one dashboard. For ballots, AGMs, consent or renewals, that's the whole job.</span></li>
+    </ol>
+  </div>
+  <div class="callout-note"><b>Why it matters:</b> most systems can send mail; very few can tell you what came back. Mail-IQ closes the loop across both paper and digital, so response chasing stops being a spreadsheet exercise.</div>
+</div></section>
+
+<!-- 7. PLATFORM & LICENSING -->
+<section class="slide"><div class="wrap">
+  <div class="eyebrow"><span class="num">07</span> Platform &amp; licensing</div>
+  <h2>Multi-tenant, module-licensed, and available on-premise</h2>
+  <p class="dek">Run Mail-IQ for many customers, each in their own isolated tenancy, licensed for the modules they've bought. For compliance-sensitive customers, the whole platform installs inside their network with a signed, tamper-proof licence.</p>
+  <div class="split">
+    <div class="screen">
+      <div class="sbar"><span class="dot" style="background:#f2695b"></span><span class="dot" style="background:#f5bf4f"></span><span class="dot" style="background:#62c554"></span><span class="url">mail.sol-iq.co.uk/platform</span></div>
+      <div class="app">
+        <div class="side">
+          <div class="brandmark">Mail<i>-IQ</i></div>
+          <div class="nav-i on"><span class="ic"></span>Platform</div>
+          <div class="nav-i"><span class="ic"></span>Team</div>
+          <div class="nav-i"><span class="ic"></span>Support</div>
+          <div class="nav-i"><span class="ic"></span>Settings</div>
+        </div>
+        <div class="main">
+          <div class="h-row"><h4>Tenancies</h4></div>
+          <div class="row"><div><div class="nm">Browns Solicitors</div><div class="sub">/browns · 14 users <span class="b-inline">2</span></div><div style="margin-top:5px"><span class="pill p-violet" style="margin-right:4px">inbound</span><span class="pill p-grey">outbound</span></div></div><span class="pill p-ok">licensed to 2027</span></div>
+          <div class="row"><div><div class="nm">Northwind Stores</div><div class="sub">/northwind · 6 users</div><div style="margin-top:5px"><span class="pill p-violet" style="margin-right:4px">inbound</span><span class="pill p-violet">outbound</span></div></div><span class="pill p-amber">expires 30 days</span></div>
+          <div class="card" style="padding:12px;margin-top:8px"><div style="font-size:11.5px;color:#3a3552"><span class="b-inline">3</span> &nbsp;<b style="color:#1a1440">On-premise:</b> one-command Docker install; a signed licence file governs modules &amp; expiry — nothing leaves the building.</div></div>
+        </div>
+      </div>
+    </div>
+    <ol class="legend">
+      <li><span class="bnum">1</span><span><b>Provision in seconds.</b> Create a clean tenancy with its first administrator; issue, extend or switch off a customer's licence from one screen.</span></li>
+      <li><span class="bnum">2</span><span><b>Module licensing.</b> Sell Inbound, Outbound, or both — a locked module is still visible, with a prompt to enable it, so the upsell is built in.</span></li>
+      <li><span class="bnum">3</span><span><b>On-premise edition.</b> The same product runs entirely inside a customer's network, gated by a cryptographically signed licence — for firms that can't use the cloud.</span></li>
+    </ol>
+  </div>
+</div></section>
+
+<section class="slide" style="border-bottom:0;text-align:center"><div class="wrap">
+  <div class="rule" style="margin:0 auto 24px"></div>
+  <h2 style="font-size:26px">See Mail-IQ running on your own post</h2>
+  <p class="dek" style="margin:12px auto 0">Happy to give you a live walkthrough or set up a trial — inbound, outbound, or the whole loop. Just get in touch.</p>
+  <p style="margin-top:24px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">For more information</p>
+  <p style="font-size:24px;font-weight:800;margin-top:6px"><a href="mailto:support@sol-iq.co.uk" style="text-decoration:none;color:var(--accent-ink)">support@sol-iq.co.uk</a></p>
+</div></section>
+
+<div class="foot">Mail-IQ · The digital mailroom, in and out · a Sol-IQ product &nbsp;·&nbsp; support@sol-iq.co.uk</div>
