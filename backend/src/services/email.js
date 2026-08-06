@@ -30,15 +30,15 @@ function smtpTransport() {
 }
 
 // Send one message via whichever transport is configured. Returns true on success.
-async function deliver({ to, subject, html }) {
+async function deliver({ to, subject, html, replyTo }) {
   const recipients = Array.isArray(to) ? to : [to]
   const smtp = smtpTransport()
   if (smtp) {
-    try { await smtp.sendMail({ from: FROM, to: recipients.join(', '), subject, html }); return true }
+    try { await smtp.sendMail({ from: FROM, to: recipients.join(', '), subject, html, ...(replyTo ? { replyTo } : {}) }); return true }
     catch (e) { console.error('[email] SMTP send failed:', e.message); return false }
   }
   if (resend) {
-    const result = await resend.emails.send({ from: FROM, to: recipients, subject, html })
+    const result = await resend.emails.send({ from: FROM, to: recipients, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) })
     if (result.error) console.error('[email] Resend error:', result.error)
     return !result.error
   }

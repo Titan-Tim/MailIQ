@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from '@/lib/auth-context'
 import {
   Mail, LayoutDashboard, Inbox, Users, BookOpen,
   Settings, Printer, Send, RotateCcw, LogOut, KeyRound,
-  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2, FolderOutput, Lock, Megaphone
+  Download, Upload, ClipboardList, Route, AtSign, FolderInput, Building2, FolderOutput, Lock, Megaphone, LifeBuoy
 } from 'lucide-react'
 
 const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sol-iq.co.uk'
@@ -55,6 +55,7 @@ const MODULES: Record<ModuleKey, { label: string; icon: any; home: string; items
 const ACCOUNT_ITEMS = [
   { href: '/dashboard/platform', label: 'Platform',        icon: Building2, platformAdminOnly: true },
   { href: '/dashboard/team',     label: 'Team',            icon: Users, superAdminOnly: true },
+  { href: '/dashboard/support',  label: 'Support',         icon: LifeBuoy },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -66,7 +67,7 @@ function moduleForPath(p: string): ModuleKey | null {
     p.startsWith('/dashboard/mailboxes') ||
     p.startsWith('/dashboard/inbound-rules')
   ) return 'inbound'
-  if (p === '/dashboard/team' || p === '/dashboard/settings') return null
+  if (p === '/dashboard/team' || p === '/dashboard/settings' || p === '/dashboard/support' || p === '/dashboard/platform') return null
   return 'outbound'
 }
 

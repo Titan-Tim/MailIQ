@@ -18,6 +18,7 @@ const ingestRouter    = require('./routes/ingest')
 const platformRouter  = require('./routes/platform')
 const campaignRouter  = require('./routes/campaigns')
 const portalPublicRouter = require('./routes/portal-public')
+const supportRouter   = require('./routes/support')
 
 const app = express()
 
@@ -45,6 +46,7 @@ app.use('/api/teams',      teamsRouter)
 app.use('/api/ingest',     ingestRouter)
 app.use('/api/platform',   platformRouter)
 app.use('/api/campaigns',  campaignRouter)
+app.use('/api/support',    supportRouter)
 
 // Public recipient-facing routes (no auth — token-gated)
 app.use('/api/track', trackRouter)
