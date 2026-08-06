@@ -15,7 +15,7 @@ const storage = require('../services/storage')
 const composer = require('../services/composer')
 const { renderLetter } = require('../services/letter-renderer')
 const { sendDispatchEmail } = require('../services/email')
-const { sendSms } = require('../services/sms')
+const { sendSms, smsConfigured } = require('../services/sms')
 const { requireAuth, requireModule } = require('../middleware/auth')
 
 const upload = multer({
@@ -58,6 +58,16 @@ const shape = (c) => ({
   id: c.id, name: c.name, baseFileName: c.baseFileName, subject: c.subject, addQr: c.addQr,
   mode: c.bodyTemplate ? 'letter' : 'upload',
   status: c.status, createdAt: c.createdAt, count: c._count?.dispatches,
+})
+
+// ── send a test SMS (verify Twilio config) ─────────────────────────────────────
+router.post('/test-sms', async (req, res) => {
+  const to = (req.body?.to || '').trim()
+  if (!to) return res.status(400).json({ error: 'Provide a mobile number in "to"' })
+  if (!smsConfigured()) return res.status(400).json({ error: 'SMS is not configured on the server (set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM or TWILIO_MESSAGING_SERVICE_SID).' })
+  const result = await sendSms(to, `Mail-IQ test message from ${req.user.tenant?.name || 'Mail-IQ'} — SMS is working.`)
+  if (result.ok) return res.json({ ok: true, to })
+  return res.status(502).json({ ok: false, error: result.error || 'Send failed' })
 })
 
 // ── list ──────────────────────────────────────────────────────────────────────
@@ -199,8 +209,9 @@ router.post('/:id/generate', async (req, res) => {
           data: { dispatchId: dispatch.id, toEmail: r.email || `sms:${r.phone}`, subject: campaign.subject || `Your document from ${tenant.name}` },
         })
         const link = portalBase ? `${portalBase}/p/${ds.trackingToken}` : ''
-        const sent = await sendSms(r.phone, `${tenant.name}: your document is ready.${link ? ' ' + link : ''}`)
-        await prisma.dispatch.update({ where: { id: dispatch.id }, data: { status: sent ? 'SENT' : 'QUEUED', sentAt: sent ? new Date() : null } })
+        const smsRes = await sendSms(r.phone, `${tenant.name}: your document is ready.${link ? ' ' + link : ''}`)
+        const sent = smsRes.ok
+        await prisma.dispatch.update({ where: { id: dispatch.id }, data: { status: sent ? 'SENT' : 'QUEUED', sentAt: sent ? new Date() : null, errorMessage: sent ? null : (smsRes.error || null) } })
         sms++
       } else {
         await addToOpenBatch(req.user.tenantId, dispatch)

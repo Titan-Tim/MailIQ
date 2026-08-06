@@ -25,6 +25,15 @@ export default function CampaignsPage() {
     await load()
   }
 
+  async function testSms() {
+    const to = window.prompt('Send a test SMS to which mobile number? (e.g. +447700900123)')
+    if (!to) return
+    try {
+      await apiFetch('/api/campaigns/test-sms', { method: 'POST', body: JSON.stringify({ to }) })
+      alert(`Test SMS sent to ${to}.`)
+    } catch (e: any) { alert(`SMS test failed: ${e.message}`) }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-start justify-between">
@@ -35,9 +44,14 @@ export default function CampaignsPage() {
             <p className="text-gray-500 text-sm mt-0.5">Send one document to many recipients &mdash; personalised, with a unique return QR, routed by each recipient&rsquo;s preference.</p>
           </div>
         </div>
-        <button onClick={() => setShowNew(true)} className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          <Plus size={16} /> New campaign
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={testSms} className="flex items-center gap-1.5 border border-gray-200 hover:border-sky-300 text-gray-600 hover:text-sky-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors" title="Send a test SMS to check Twilio">
+            <Smartphone size={15} /> Test SMS
+          </button>
+          <button onClick={() => setShowNew(true)} className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <Plus size={16} /> New campaign
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200">

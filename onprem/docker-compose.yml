@@ -53,6 +53,11 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       FROM_NAME: ${FROM_NAME:-Mail-IQ}
       FROM_EMAIL: ${FROM_EMAIL:-noreply@mailiq.local}
+      # SMS (optional — Twilio). Leave blank to disable texting.
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM: ${TWILIO_FROM:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
       # First-run bootstrap (only used when the DB has no tenants yet)
       BOOTSTRAP_ORG: ${BOOTSTRAP_ORG:-}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
