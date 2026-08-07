@@ -63,16 +63,21 @@ router.get('/:token/document', async (req, res) => {
   } catch { res.status(404).send('Document not available.') }
 })
 
-// POST /api/portal/:token/upload — recipient uploads a completed response.
-router.post('/:token/upload', upload.single('file'), async (req, res) => {
+// POST /api/portal/:token/upload — recipient uploads one or more completed
+// documents in a single go (e.g. a form + passport photo + licence + certificate).
+// Accepts multipart fields "files" (multi) and/or "file" (legacy single).
+router.post('/:token/upload', upload.fields([{ name: 'files', maxCount: 10 }, { name: 'file', maxCount: 1 }]), async (req, res) => {
   const send = await loadByToken(req.params.token)
   if (!send) return res.status(404).json({ error: 'Not found' })
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+  const incoming = [...(req.files?.files || []), ...(req.files?.file || [])]
+  if (!incoming.length) return res.status(400).json({ error: 'No files uploaded' })
 
-  const fileKey = await storage.saveFile(req.file.buffer, 'portal-upload')
-  await prisma.portalUpload.create({
-    data: { dispatchId: send.dispatch.id, fileKey, fileName: req.file.originalname, fileSizeBytes: req.file.size },
-  })
+  for (const f of incoming) {
+    const fileKey = await storage.saveFile(f.buffer, 'portal-upload')
+    await prisma.portalUpload.create({
+      data: { dispatchId: send.dispatch.id, fileKey, fileName: f.originalname, fileSizeBytes: f.size },
+    })
+  }
   await markReturned(send.dispatch, 'PORTAL')
 
   const uploads = await prisma.portalUpload.findMany({ where: { dispatchId: send.dispatch.id }, orderBy: { uploadedAt: 'asc' } })

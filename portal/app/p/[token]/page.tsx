@@ -9,6 +9,7 @@ export default function RecipientPortal() {
   const [meta, setMeta] = useState<any>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'notfound'>('loading')
   const [uploading, setUploading] = useState(false)
+  const [pending, setPending] = useState<File[]>([])
   const [uploads, setUploads] = useState<any[]>([])
   const [returned, setReturned] = useState(false)
   const [error, setError] = useState('')
@@ -21,14 +22,28 @@ export default function RecipientPortal() {
       .catch(() => setState('notfound'))
   }, [token])
 
-  async function onUpload(file: File) {
+  function addFiles(list: FileList | null) {
+    if (!list?.length) return
+    setError('')
+    setPending((prev) => {
+      const next = [...prev]
+      for (const f of Array.from(list)) {
+        if (!next.some((p) => p.name === f.name && p.size === f.size)) next.push(f)
+      }
+      return next.slice(0, 10) // matches the server-side cap
+    })
+  }
+
+  async function sendPending() {
+    if (!pending.length) return
     setUploading(true); setError('')
     try {
-      const fd = new FormData(); fd.append('file', file)
+      const fd = new FormData()
+      pending.forEach((f) => fd.append('files', f))
       const res = await fetch(`${API}/api/portal/${token}/upload`, { method: 'POST', body: fd })
       if (!res.ok) throw new Error('Upload failed — please try again')
       const d = await res.json()
-      setUploads(d.uploads || []); setReturned(true)
+      setUploads(d.uploads || []); setPending([]); setReturned(true)
     } catch (e: any) { setError(e.message) } finally { setUploading(false) }
   }
 
@@ -66,12 +81,35 @@ export default function RecipientPortal() {
             ) : (
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-800 mb-1">Respond</p>
-                <p className="text-xs text-gray-500 mb-3">When you&rsquo;ve completed the document, upload it back here.</p>
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="inline-flex items-center gap-2 border border-gray-300 hover:border-violet-400 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
-                  {uploading ? 'Uploading…' : 'Upload your completed document'}
-                </button>
-                <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f) }} />
+                <p className="text-xs text-gray-500 mb-3">Upload your completed document — and any supporting documents — together in one go.</p>
+
+                {pending.length > 0 && (
+                  <ul className="text-left mb-3 space-y-1.5">
+                    {pending.map((f, i) => (
+                      <li key={`${f.name}-${f.size}`} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                        <span className="text-sm text-gray-800 flex-1 truncate">{f.name}</span>
+                        <span className="text-[11px] text-gray-400">{f.size > 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}</span>
+                        <button onClick={() => setPending((prev) => prev.filter((_, x) => x !== i))} disabled={uploading}
+                          className="text-gray-400 hover:text-red-500 text-sm leading-none px-1" aria-label={`Remove ${f.name}`}>×</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                    className="inline-flex items-center gap-2 border border-gray-300 hover:border-violet-400 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60">
+                    {pending.length ? '+ Add more documents' : 'Choose your documents'}
+                  </button>
+                  {pending.length > 0 && (
+                    <button onClick={sendPending} disabled={uploading}
+                      className="inline-flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-60" style={{ background: brand }}>
+                      {uploading ? 'Sending…' : `Send ${pending.length} document${pending.length === 1 ? '' : 's'}`}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">You can select several files at once (up to 10).</p>
+                <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
                 {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
               </div>
             )}
