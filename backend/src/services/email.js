@@ -11,6 +11,14 @@ const { Resend } = require('resend')
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 const FROM = `${process.env.FROM_NAME || 'Mail-IQ'} <${process.env.FROM_EMAIL || 'noreply@mailiq.app'}>`
+// Onboarding (invite) + password-reset emails come from a welcome@ address on the
+// same verified domain as FROM_EMAIL (override with ACCOUNT_FROM_EMAIL). Dispatch
+// mail keeps FROM.
+const ACCOUNT_FROM = process.env.ACCOUNT_FROM_EMAIL || (() => {
+  const email = process.env.FROM_EMAIL || 'noreply@mailiq.app'
+  const domain = email.includes('@') ? email.split('@')[1] : 'mailiq.app'
+  return `${process.env.FROM_NAME || 'Mail-IQ'} <welcome@${domain}>`
+})()
 const API_URL = process.env.API_URL || 'http://localhost:3002'
 
 // Lazily-built SMTP transport (only when configured, so nodemailer isn't required otherwise).
@@ -30,15 +38,16 @@ function smtpTransport() {
 }
 
 // Send one message via whichever transport is configured. Returns true on success.
-async function deliver({ to, subject, html, replyTo }) {
+async function deliver({ to, subject, html, replyTo, from }) {
   const recipients = Array.isArray(to) ? to : [to]
+  const sender = from || FROM
   const smtp = smtpTransport()
   if (smtp) {
-    try { await smtp.sendMail({ from: FROM, to: recipients.join(', '), subject, html, ...(replyTo ? { replyTo } : {}) }); return true }
+    try { await smtp.sendMail({ from: sender, to: recipients.join(', '), subject, html, ...(replyTo ? { replyTo } : {}) }); return true }
     catch (e) { console.error('[email] SMTP send failed:', e.message); return false }
   }
   if (resend) {
-    const result = await resend.emails.send({ from: FROM, to: recipients, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) })
+    const result = await resend.emails.send({ from: sender, to: recipients, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) })
     if (result.error) console.error('[email] Resend error:', result.error)
     return !result.error
   }
@@ -132,7 +141,7 @@ async function sendPasswordResetEmail(user, tenant, tempPassword) {
 </body>
 </html>`
 
-  return deliver({ to: user.email, subject: `Your ${orgName} password has been reset`, html })
+  return deliver({ to: user.email, subject: `Your ${orgName} password has been reset`, html, from: ACCOUNT_FROM })
 }
 
 /**
@@ -178,7 +187,7 @@ async function sendInviteEmail(user, tenant, tempPassword, invitedByName) {
 </body>
 </html>`
 
-  return deliver({ to: user.email, subject: `You've been invited to ${orgName} on Mail-IQ`, html })
+  return deliver({ to: user.email, subject: `You've been invited to ${orgName} on Mail-IQ`, html, from: ACCOUNT_FROM })
 }
 
 module.exports = { sendDispatchEmail, sendPasswordResetEmail, sendInviteEmail, deliver }
