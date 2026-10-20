@@ -1,0 +1,19 @@
+# Dependabot configuration for MailIQ
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates
+#
+# open-pull-requests-limit: 0 keeps routine version-update PRs OFF (security
+# updates still arrive as before); this file exists for the ignore rules, which
+# security updates also respect.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/portal"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    ignore:
+      # Tailwind v4 is a rewrite (new config format, @tailwindcss/postcss) and
+      # breaks `npm run build`. A 3.4 -> 4.3 bump arrived as a security update
+      # (postcss-selector-parser advisory). Upgrade deliberately on a branch.
+      - dependency-name: "tailwindcss"
+        versions: [">=4.0.0"]
